@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-import { POST_STATUSES } from "@/models/Post";
-import { SOCIAL_PLATFORMS } from "@/models/SocialAccount";
+import { POST_STATUSES } from "@/types/posts";
+import { SOCIAL_PLATFORMS } from "@/types/platforms";
 
 export const POST_TONES = [
   "professional",

@@ -1,7 +1,6 @@
 import mongoose, { Schema, model, models, type Model } from "mongoose";
-
-export const SOCIAL_PLATFORMS = ["linkedin", "twitter", "facebook"] as const;
-export type SocialPlatform = (typeof SOCIAL_PLATFORMS)[number];
+import { SOCIAL_PLATFORMS, type SocialPlatform } from "@/types/platforms";
+export { SOCIAL_PLATFORMS, type SocialPlatform };
 
 export interface ISocialAccount {
   userId: mongoose.Types.ObjectId;

@@ -2,14 +2,8 @@ import mongoose, { Schema, model, models, type Model } from "mongoose";
 
 import { SOCIAL_PLATFORMS, type SocialPlatform } from "@/models/SocialAccount";
 
-export const POST_STATUSES = [
-  "draft",
-  "scheduled",
-  "publishing",
-  "published",
-  "failed",
-] as const;
-export type PostStatus = (typeof POST_STATUSES)[number];
+import { POST_STATUSES, type PostStatus } from "@/types/posts";
+export { POST_STATUSES, type PostStatus };
 
 export interface IPost {
   userId: mongoose.Types.ObjectId;

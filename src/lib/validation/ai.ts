@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { POST_TONES } from "@/lib/validation/posts";
-import { SOCIAL_PLATFORMS } from "@/models/SocialAccount";
+import { SOCIAL_PLATFORMS } from "@/types/platforms";
 
 export const POST_GOALS = [
   "educate",

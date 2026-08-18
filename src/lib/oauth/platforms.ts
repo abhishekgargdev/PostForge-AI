@@ -1,4 +1,4 @@
-import { SOCIAL_PLATFORMS, type SocialPlatform } from "@/models/SocialAccount";
+import { SOCIAL_PLATFORMS, type SocialPlatform } from "@/types/platforms";
 
 export const OAUTH_IMPLEMENTED_PLATFORMS = ["linkedin"] as const;
 export type OAuthPlatform = (typeof OAUTH_IMPLEMENTED_PLATFORMS)[number];
