@@ -2,6 +2,15 @@
   "name": "postforge-ai",
   "version": "0.1.0",
   "private": true,
+  "description": "PostForge AI — A premium multi-platform social media content generator and scheduler powered by Gemini AI. Draft once and publish everywhere.",
+  "keywords": [
+    "nextjs",
+    "pwa",
+    "social-media",
+    "gemini-ai",
+    "mongodb",
+    "scheduler"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",

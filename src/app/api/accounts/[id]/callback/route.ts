@@ -15,7 +15,7 @@ import { connectDB } from "@/lib/db";
 import SocialAccount from "@/models/SocialAccount";
 
 type RouteContext = {
-  params: Promise<{ platform: string }>;
+  params: Promise<{ id: string }>;
 };
 
 function redirectWithError(request: NextRequest, message: string) {
@@ -37,7 +37,7 @@ function redirectWithSuccess(request: NextRequest, platform: string) {
 }
 
 export async function GET(request: NextRequest, context: RouteContext) {
-  const { platform } = await context.params;
+  const { id: platform } = await context.params;
 
   if (!isSocialPlatform(platform) || !isOAuthPlatform(platform)) {
     return redirectWithError(request, "Unsupported platform.");
