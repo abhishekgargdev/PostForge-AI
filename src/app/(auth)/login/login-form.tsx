@@ -138,7 +138,7 @@ export function LoginForm() {
             >
               {isSubmitting ? (
                 <>
-                  <Loader className="size-4" label="Signing in" />
+                  <Loader size="sm" label="Signing in" />
                   Signing in...
                 </>
               ) : (
