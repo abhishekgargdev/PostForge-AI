@@ -60,7 +60,9 @@ export function isNavItemActive(pathname: string, href: string): boolean {
       pathname === "/settings" ||
       pathname.startsWith("/settings/") ||
       pathname === "/analytics" ||
-      pathname.startsWith("/analytics/")
+      pathname.startsWith("/analytics/") ||
+      pathname === "/templates" ||
+      pathname.startsWith("/templates/")
     );
   }
 

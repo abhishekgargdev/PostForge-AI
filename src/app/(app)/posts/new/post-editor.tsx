@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { apiClient } from "@/lib/api-client";
@@ -52,6 +52,7 @@ const PLATFORM_OPTIONS: SocialPlatform[] = [...SOCIAL_PLATFORMS];
 
 export function PostEditor() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [ideaPrompt, setIdeaPrompt] = useState("");
   const [content, setContent] = useState("");
   const [platforms, setPlatforms] = useState<SocialPlatform[]>(["linkedin"]);
@@ -65,6 +66,22 @@ export function PostEditor() {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [scheduledAt, setScheduledAt] = useState("");
   const [libraryOpen, setLibraryOpen] = useState(false);
+
+  useEffect(() => {
+    const prompt = searchParams.get("prompt");
+    const platform = searchParams.get("platform");
+
+    if (prompt) {
+      setIdeaPrompt(prompt);
+    }
+
+    if (
+      platform &&
+      SOCIAL_PLATFORMS.includes(platform as SocialPlatform)
+    ) {
+      setPlatforms([platform as SocialPlatform]);
+    }
+  }, [searchParams]);
 
   function togglePlatform(platform: SocialPlatform) {
     setPlatforms((current) =>

@@ -17,6 +17,8 @@ export interface ITemplate {
   category?: string;
   isPublic: boolean;
   usageCount: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const templateSchema = new Schema<ITemplate>(

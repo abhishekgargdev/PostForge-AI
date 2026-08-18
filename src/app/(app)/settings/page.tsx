@@ -1,5 +1,10 @@
 import Link from "next/link";
-import { BarChart3Icon, Link2Icon, SettingsIcon } from "lucide-react";
+import {
+  BarChart3Icon,
+  LayoutTemplateIcon,
+  Link2Icon,
+  SettingsIcon,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +27,12 @@ const moreLinks = [
     description: "Track performance across connected platforms.",
     href: "/analytics",
     icon: BarChart3Icon,
+  },
+  {
+    title: "Templates",
+    description: "Browse reusable AI prompts for your posts.",
+    href: "/templates",
+    icon: LayoutTemplateIcon,
   },
   {
     title: "Settings",

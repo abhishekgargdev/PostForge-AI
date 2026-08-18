@@ -8,6 +8,7 @@ const PROTECTED_PREFIXES = [
   "/media",
   "/analytics",
   "/settings",
+  "/templates",
 ];
 
 function isProtectedPath(pathname: string): boolean {
@@ -52,5 +53,6 @@ export const config = {
     "/media/:path*",
     "/analytics/:path*",
     "/settings/:path*",
+    "/templates/:path*",
   ],
 };
