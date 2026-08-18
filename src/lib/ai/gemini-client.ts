@@ -139,6 +139,13 @@ export async function generateWithRotation<T>(
   );
 }
 
+export function isGeminiKeysExhaustedError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message.includes("Gemini API keys exhausted")
+  );
+}
+
 export function getTextModel(apiKey?: string): GenerativeModel {
   const key = apiKey ?? getCurrentKey();
   const genAI = new GoogleGenerativeAI(key);

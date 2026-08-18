@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { generateText } from "@/lib/ai/gemini-client";
+import {
+  generateText,
+  isGeminiKeysExhaustedError,
+} from "@/lib/ai/gemini-client";
 import { isAuthError, requireAuth } from "@/lib/auth";
+import { connectDB } from "@/lib/db";
+import { createAiGenerationFailureNotification } from "@/lib/notifications/create";
 import { SOCIAL_PLATFORMS } from "@/models/SocialAccount";
 
 const generateTextSchema = z.object({
@@ -12,8 +17,11 @@ const generateTextSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  let userId: string | undefined;
+
   try {
-    await requireAuth(request);
+    const user = await requireAuth(request);
+    userId = user.id;
 
     const body = await request.json();
     const parsed = generateTextSchema.safeParse(body);
@@ -40,6 +48,16 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (isAuthError(error)) {
       return error.response;
+    }
+
+    if (userId && isGeminiKeysExhaustedError(error)) {
+      await connectDB();
+      await createAiGenerationFailureNotification({
+        userId,
+        generationType: "text",
+        errorMessage:
+          error instanceof Error ? error.message : "Unknown Gemini API error",
+      });
     }
 
     const message =

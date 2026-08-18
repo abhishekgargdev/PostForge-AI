@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { generateImage } from "@/lib/ai/gemini-client";
+import {
+  generateImage,
+  isGeminiKeysExhaustedError,
+} from "@/lib/ai/gemini-client";
 import { isAuthError, requireAuth } from "@/lib/auth";
 import { buildThumbnailUrl, uploadImageBuffer } from "@/lib/cloudinary";
 import { connectDB } from "@/lib/db";
+import { createAiGenerationFailureNotification } from "@/lib/notifications/create";
 import { toMediaResponse } from "@/lib/media/serialize";
 import MediaLibrary from "@/models/MediaLibrary";
 
@@ -13,8 +17,11 @@ const generateImageSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  let userId: string | undefined;
+
   try {
     const user = await requireAuth(request);
+    userId = user.id;
 
     const body = await request.json();
     const parsed = generateImageSchema.safeParse(body);
@@ -61,6 +68,16 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (isAuthError(error)) {
       return error.response;
+    }
+
+    if (userId && isGeminiKeysExhaustedError(error)) {
+      await connectDB();
+      await createAiGenerationFailureNotification({
+        userId,
+        generationType: "image",
+        errorMessage:
+          error instanceof Error ? error.message : "Unknown Gemini API error",
+      });
     }
 
     const message =

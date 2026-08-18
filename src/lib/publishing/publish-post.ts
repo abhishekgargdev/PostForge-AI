@@ -2,7 +2,10 @@ import { connectDB } from "@/lib/db";
 import { decryptToken } from "@/lib/crypto/tokens";
 import { publishLinkedInPost } from "@/lib/oauth/linkedin";
 import { ensurePostPlatformsForPost } from "@/lib/publishing/ensure-post-platforms";
-import { createPublishFailureNotification } from "@/lib/publishing/notifications";
+import {
+  createPublishFailureNotification,
+  createPublishSuccessNotification,
+} from "@/lib/notifications/create";
 import {
   syncPostStatusFromPlatforms,
 } from "@/lib/publishing/sync-post-status";
@@ -269,6 +272,11 @@ export async function processDueScheduledPosts(): Promise<ScheduledPublishSummar
 
     if (updatedPost?.status === "published") {
       summary.publishedPosts += 1;
+      await createPublishSuccessNotification({
+        userId: post.userId.toString(),
+        postId: post._id.toString(),
+        contentPreview: post.content,
+      });
     } else if (updatedPost?.status === "failed") {
       summary.failedPosts += 1;
     }

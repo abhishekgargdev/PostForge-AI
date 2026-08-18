@@ -7,6 +7,7 @@ import { LogOutIcon, UserIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { getUserInitials } from "@/components/app-shell/nav-items";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,8 +55,11 @@ export function AppTopBar({ user }: AppTopBarProps) {
         </p>
       </div>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger
+      <div className="flex items-center gap-1">
+        <NotificationBell />
+
+        <DropdownMenu>
+          <DropdownMenuTrigger
           render={
             <Button
               variant="ghost"
@@ -72,8 +76,8 @@ export function AppTopBar({ user }: AppTopBarProps) {
             ) : null}
             <AvatarFallback>{getUserInitials(user.fullName)}</AvatarFallback>
           </Avatar>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
           <div className="px-2 py-1.5">
             <p className="truncate text-sm font-medium">{user.fullName}</p>
             <p className="truncate text-xs text-muted-foreground">
@@ -98,8 +102,9 @@ export function AppTopBar({ user }: AppTopBarProps) {
             )}
             Logout
           </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </header>
   );
 }
