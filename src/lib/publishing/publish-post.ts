@@ -1,4 +1,6 @@
 import { connectDB } from "@/lib/db";
+import { decryptToken } from "@/lib/crypto/tokens";
+import { publishLinkedInPost } from "@/lib/oauth/linkedin";
 import { ensurePostPlatformsForPost } from "@/lib/publishing/ensure-post-platforms";
 import { createPublishFailureNotification } from "@/lib/publishing/notifications";
 import {
@@ -32,13 +34,26 @@ type PlatformPublishSuccess = {
 };
 
 async function publishToLinkedIn(
-  _context: PublishContext,
+  context: PublishContext,
 ): Promise<PlatformPublishSuccess> {
-  const id = `sim-linkedin-${Date.now()}`;
-  return {
-    platformPostId: id,
-    platformUrl: `https://www.linkedin.com/feed/update/${id}`,
-  };
+  if (!context.socialAccount.isConnected) {
+    throw new Error(
+      "LinkedIn is not connected. Connect your account in Settings before publishing.",
+    );
+  }
+
+  if (context.socialAccount.platformUserId.startsWith("simulated-")) {
+    throw new Error("LinkedIn simulated account cannot publish to the real API.");
+  }
+
+  const accessToken = decryptToken(context.socialAccount.accessToken);
+
+  return publishLinkedInPost({
+    accessToken,
+    platformUserId: context.socialAccount.platformUserId,
+    content: context.content,
+    imageUrl: context.imageUrl,
+  });
 }
 
 async function publishToTwitter(

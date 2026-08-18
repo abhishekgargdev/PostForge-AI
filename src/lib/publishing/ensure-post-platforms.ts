@@ -3,7 +3,7 @@ import type { HydratedDocument } from "mongoose";
 import type { IPost } from "@/models/Post";
 import PostPlatform from "@/models/PostPlatform";
 
-import { getOrCreateSimulatedSocialAccount } from "@/lib/publishing/simulated-social-account";
+import { resolveSocialAccountForPlatform } from "@/lib/publishing/resolve-social-account";
 
 export async function ensurePostPlatformsForPost(
   post: HydratedDocument<IPost>,
@@ -22,7 +22,7 @@ export async function ensurePostPlatformsForPost(
       continue;
     }
 
-    const socialAccount = await getOrCreateSimulatedSocialAccount(
+    const socialAccount = await resolveSocialAccountForPlatform(
       userId,
       platform,
     );

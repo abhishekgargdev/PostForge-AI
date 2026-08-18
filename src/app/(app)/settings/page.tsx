@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3Icon, SettingsIcon } from "lucide-react";
+import { BarChart3Icon, Link2Icon, SettingsIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +11,12 @@ import {
 } from "@/components/ui/card";
 
 const moreLinks = [
+  {
+    title: "Connected accounts",
+    description: "Connect LinkedIn, Twitter/X, and Facebook for publishing.",
+    href: "/settings/accounts",
+    icon: Link2Icon,
+  },
   {
     title: "Analytics",
     description: "Track performance across connected platforms.",
