@@ -7,7 +7,10 @@ import { toast } from "sonner";
 
 import { apiClient } from "@/lib/api-client";
 import type { PostResponse } from "@/lib/posts/serialize";
+import { formatPlatformLabel } from "@/lib/posts/serialize";
+import type { MediaResponse } from "@/lib/media/serialize";
 import { POST_TONES, type PostTone } from "@/lib/validation/posts";
+import { MediaPickerDialog } from "@/components/media/media-picker-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -40,15 +43,9 @@ import {
   type SocialPlatform,
 } from "@/models/SocialAccount";
 import type { PostStatus } from "@/models/Post";
-import { formatPlatformLabel } from "@/lib/posts/serialize";
 
 type GenerateTextResponse = {
   content: string;
-};
-
-type GenerateImageResponse = {
-  id: string;
-  fileUrl: string;
 };
 
 const PLATFORM_OPTIONS: SocialPlatform[] = [...SOCIAL_PLATFORMS];
@@ -66,6 +63,7 @@ export function PostEditor() {
   const [isSaving, setIsSaving] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [scheduledAt, setScheduledAt] = useState("");
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   function togglePlatform(platform: SocialPlatform) {
     setPlatforms((current) =>
@@ -128,7 +126,7 @@ export function PostEditor() {
     setIsGeneratingImage(true);
 
     try {
-      const data = await apiClient<GenerateImageResponse>(
+      const data = await apiClient<MediaResponse>(
         "/api/ai/generate-image",
         {
           method: "POST",
@@ -146,6 +144,17 @@ export function PostEditor() {
     } finally {
       setIsGeneratingImage(false);
     }
+  }
+
+  function handleLibrarySelect(media: MediaResponse) {
+    setImageUrl(media.fileUrl);
+    setMediaLibraryId(media.id);
+    toast.success("Media selected from library");
+  }
+
+  function clearSelectedImage() {
+    setImageUrl("");
+    setMediaLibraryId("");
   }
 
   async function savePost(
@@ -328,12 +337,36 @@ export function PostEditor() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Generated image</CardTitle>
+          <CardTitle>Post image</CardTitle>
           <CardDescription>
-            Preview, regenerate, or continue without an image.
+            Generate with AI, choose from your library, or continue without an
+            image.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 flex-1"
+              disabled={isGeneratingImage || isSaving}
+              onClick={() => setLibraryOpen(true)}
+            >
+              Choose from library
+            </Button>
+            {imageUrl ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-11 flex-1"
+                disabled={isSaving}
+                onClick={clearSelectedImage}
+              >
+                Remove image
+              </Button>
+            ) : null}
+          </div>
+
           {isGeneratingImage ? (
             <SectionSkeleton rows={1} rowClassName="aspect-video w-full rounded-xl" />
           ) : imageUrl ? (
@@ -341,7 +374,7 @@ export function PostEditor() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={imageUrl}
-                alt="Generated post visual"
+                alt="Selected post visual"
                 className="max-h-80 w-full rounded-xl border object-contain"
               />
               <Button
@@ -351,12 +384,12 @@ export function PostEditor() {
                 disabled={isSaving}
                 onClick={handleGenerateImage}
               >
-                Regenerate image
+                Regenerate with AI
               </Button>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              No image yet. Generate one with AI or save text-only draft.
+              No image selected yet.
             </p>
           )}
         </CardContent>
@@ -427,6 +460,12 @@ export function PostEditor() {
       >
         Back to posts
       </Button>
+
+      <MediaPickerDialog
+        open={libraryOpen}
+        onOpenChange={setLibraryOpen}
+        onSelect={handleLibrarySelect}
+      />
 
       <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
         <DialogContent>

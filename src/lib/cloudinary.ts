@@ -19,9 +19,14 @@ export type CloudinaryUploadResult = {
   publicId: string;
 };
 
+type UploadImageOptions = {
+  transformation?: Array<Record<string, string | number>>;
+};
+
 export async function uploadImageBuffer(
   buffer: Buffer,
   folder: string,
+  options: UploadImageOptions = {},
 ): Promise<CloudinaryUploadResult> {
   ensureCloudinaryConfigured();
 
@@ -30,6 +35,9 @@ export async function uploadImageBuffer(
       {
         folder,
         resource_type: "image",
+        transformation: options.transformation ?? [
+          { width: 2000, height: 2000, crop: "limit", quality: "auto:good" },
+        ],
       },
       (error, result) => {
         if (error || !result?.secure_url || !result.public_id) {
@@ -45,6 +53,18 @@ export async function uploadImageBuffer(
     );
 
     uploadStream.end(buffer);
+  });
+}
+
+export function buildThumbnailUrl(publicId: string): string {
+  ensureCloudinaryConfigured();
+
+  return cloudinary.url(publicId, {
+    secure: true,
+    transformation: [
+      { width: 400, height: 400, crop: "fill", gravity: "auto" },
+      { quality: "auto:good", fetch_format: "auto" },
+    ],
   });
 }
 

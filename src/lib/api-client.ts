@@ -49,3 +49,25 @@ export async function apiClient<T>(
 
   return json.data;
 }
+
+export async function uploadApiClient<T>(
+  path: string,
+  formData: FormData,
+): Promise<T> {
+  const response = await fetch(path, {
+    method: "POST",
+    body: formData,
+    credentials: "include",
+  });
+
+  const json = (await response.json()) as ApiResponse<T>;
+
+  if (!response.ok || !json.success) {
+    const message =
+      !json.success ? json.error.message : "Upload failed";
+    const code = !json.success ? json.error.code : undefined;
+    throw new ApiClientError(message, response.status, code);
+  }
+
+  return json.data;
+}

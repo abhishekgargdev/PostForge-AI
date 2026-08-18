@@ -3,43 +3,14 @@ import { z } from "zod";
 
 import { generateImage } from "@/lib/ai/gemini-client";
 import { isAuthError, requireAuth } from "@/lib/auth";
-import { uploadImageBuffer } from "@/lib/cloudinary";
+import { buildThumbnailUrl, uploadImageBuffer } from "@/lib/cloudinary";
 import { connectDB } from "@/lib/db";
-import MediaLibrary, { type IMediaLibrary } from "@/models/MediaLibrary";
+import { toMediaResponse } from "@/lib/media/serialize";
+import MediaLibrary from "@/models/MediaLibrary";
 
 const generateImageSchema = z.object({
   prompt: z.string().trim().min(1, "Prompt is required"),
 });
-
-type MediaRecord = {
-  id: string;
-  userId: string;
-  fileName: string;
-  fileType: IMediaLibrary["fileType"];
-  fileUrl: string;
-  thumbnailUrl?: string;
-  source: IMediaLibrary["source"];
-  aiPrompt?: string;
-  cloudinaryPublicId: string;
-  createdAt: Date;
-};
-
-function toMediaRecord(
-  media: IMediaLibrary & { _id: { toString(): string } },
-): MediaRecord {
-  return {
-    id: media._id.toString(),
-    userId: media.userId.toString(),
-    fileName: media.fileName,
-    fileType: media.fileType,
-    fileUrl: media.fileUrl,
-    thumbnailUrl: media.thumbnailUrl,
-    source: media.source,
-    aiPrompt: media.aiPrompt,
-    cloudinaryPublicId: media.cloudinaryPublicId,
-    createdAt: media.createdAt,
-  };
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -66,6 +37,7 @@ export async function POST(request: NextRequest) {
       imageBuffer,
       "postforge/ai-generated",
     );
+    const thumbnailUrl = buildThumbnailUrl(upload.publicId);
 
     await connectDB();
 
@@ -76,6 +48,7 @@ export async function POST(request: NextRequest) {
       fileName,
       fileType: "image",
       fileUrl: upload.secureUrl,
+      thumbnailUrl,
       source: "ai-generated",
       aiPrompt: parsed.data.prompt,
       cloudinaryPublicId: upload.publicId,
@@ -83,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: toMediaRecord(media.toObject()),
+      data: toMediaResponse(media.toObject()),
     });
   } catch (error) {
     if (isAuthError(error)) {
