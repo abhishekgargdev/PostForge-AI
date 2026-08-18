@@ -15,10 +15,12 @@ export const KEY_POOL = KEY_ENV_NAMES.map((name) => process.env[name]?.trim()).f
   (key): key is string => Boolean(key),
 );
 
-const TEXT_MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-2.0-flash";
-const IMAGE_MODEL =
-  process.env.GEMINI_IMAGE_MODEL?.trim() ||
-  "gemini-2.0-flash-preview-image-generation";
+function getGeminiModelName(): string {
+  return process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
+}
+
+const TEXT_MODEL = getGeminiModelName();
+const IMAGE_MODEL = getGeminiModelName();
 
 const PLATFORM_CHAR_LIMITS: Record<SocialPlatform, number> = {
   linkedin: 3000,
@@ -151,7 +153,7 @@ export function getTextModel(apiKey?: string): GenerativeModel {
   const genAI = new GoogleGenerativeAI(key);
 
   return genAI.getGenerativeModel({
-    model: TEXT_MODEL,
+    model: getGeminiModelName(),
   });
 }
 
@@ -160,7 +162,7 @@ export function getImageModel(apiKey?: string): GenerativeModel {
   const genAI = new GoogleGenerativeAI(key);
 
   return genAI.getGenerativeModel({
-    model: IMAGE_MODEL,
+    model: getGeminiModelName(),
     generationConfig: {
       responseModalities: ["TEXT", "IMAGE"],
     } as ExtendedGenerationConfig as never,
@@ -217,7 +219,7 @@ export async function generateText({
   return generateWithRotation(async (apiKey) => {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: TEXT_MODEL,
+      model: getGeminiModelName(),
       systemInstruction: buildTextSystemInstruction(platform, tone),
     });
     const result = await model.generateContent(prompt);
