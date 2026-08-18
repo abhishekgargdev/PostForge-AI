@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   BarChart3Icon,
+  CalendarDaysIcon,
   LayoutTemplateIcon,
   Link2Icon,
   SettingsIcon,
@@ -21,6 +22,12 @@ const moreLinks = [
     description: "Connect LinkedIn, Twitter/X, and Facebook for publishing.",
     href: "/settings/accounts",
     icon: Link2Icon,
+  },
+  {
+    title: "Content calendar",
+    description: "Set default topics and tones for each day of the week.",
+    href: "/settings/content-calendar",
+    icon: CalendarDaysIcon,
   },
   {
     title: "Analytics",

@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { toDayPreferenceResponse } from "@/lib/day-preferences/serialize";
+import { isAuthError, requireAuth } from "@/lib/auth";
+import { connectDB } from "@/lib/db";
 import {
   DAY_OF_WEEK_LABELS,
   getDayOfWeekInTimezone,
 } from "@/lib/content-preferences/types";
-import { POST_GOAL_LABELS } from "@/lib/validation/ai";
-import { isAuthError, requireAuth } from "@/lib/auth";
-import { connectDB } from "@/lib/db";
 import DayPreference from "@/models/DayPreference";
-import type { IDayPreference } from "@/models/DayPreference";
 import User from "@/models/User";
 
 export async function GET(request: NextRequest) {
@@ -31,35 +30,26 @@ export async function GET(request: NextRequest) {
     }
 
     const timezone = dbUser.timezone || "UTC";
-    const dayOfWeek = getDayOfWeekInTimezone(timezone);
-    const weekdayLabel = DAY_OF_WEEK_LABELS[dayOfWeek];
+    const todayDayOfWeek = getDayOfWeekInTimezone(timezone);
 
-    const preference = await DayPreference.findOne({
-      userId: user.id,
-      dayOfWeek,
-      isActive: true,
-    })
-      .select("topic goal tone")
-      .lean<Pick<IDayPreference, "topic" | "goal" | "tone">>();
-
-    const todayPreference = preference
-      ? {
-          topic: preference.topic,
-          goal: preference.goal,
-          tone: preference.tone,
-        }
-      : null;
+    const preferences = await DayPreference.find({ userId: user.id })
+      .sort({ dayOfWeek: 1 })
+      .lean<
+        Array<
+          Parameters<typeof toDayPreferenceResponse>[0] & {
+            createdAt: Date;
+            updatedAt: Date;
+          }
+        >
+      >();
 
     return NextResponse.json({
       success: true,
       data: {
-        dayOfWeek,
-        weekdayLabel,
         timezone,
-        todayPreference,
-        goalLabel: todayPreference
-          ? POST_GOAL_LABELS[todayPreference.goal]
-          : undefined,
+        todayDayOfWeek,
+        todayDayLabel: DAY_OF_WEEK_LABELS[todayDayOfWeek],
+        preferences: preferences.map(toDayPreferenceResponse),
       },
     });
   } catch (error) {
@@ -70,12 +60,12 @@ export async function GET(request: NextRequest) {
     const message =
       error instanceof Error
         ? error.message
-        : "Unable to fetch content preferences";
+        : "Unable to fetch day preferences";
 
     return NextResponse.json(
       {
         success: false,
-        error: { message, code: "CONTENT_PREFERENCES_FAILED" },
+        error: { message, code: "LIST_DAY_PREFERENCES_FAILED" },
       },
       { status: 500 },
     );

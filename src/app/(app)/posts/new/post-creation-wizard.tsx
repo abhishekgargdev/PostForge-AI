@@ -54,7 +54,7 @@ type GenerateTextResponse = {
 
 type ContentPreferencesResponse = {
   weekdayLabel: string;
-  todayPreference: { topic: string; goal: PostGoal } | null;
+  todayPreference: { topic: string; goal: PostGoal; tone: PostTone } | null;
   goalLabel?: string;
 };
 
@@ -190,6 +190,7 @@ export function PostCreationWizard() {
         } else if (preferences?.todayPreference) {
           setTopic(preferences.todayPreference.topic);
           setGoal(preferences.todayPreference.goal);
+          setTone(preferences.todayPreference.tone);
           setDayPreferenceHint(preferences);
         }
 
@@ -696,6 +697,9 @@ export function PostCreationWizard() {
                   {dayPreferenceHint.goalLabel
                     ? ` — ${dayPreferenceHint.goalLabel}`
                     : ""}
+                  {dayPreferenceHint.todayPreference?.tone
+                    ? ` · ${capitalize(dayPreferenceHint.todayPreference.tone)}`
+                    : ""}
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -705,6 +709,7 @@ export function PostCreationWizard() {
                     onClick={() => {
                       setTopic("");
                       setGoal("");
+                      setTone("professional");
                       setDayPreferenceDismissed(true);
                     }}
                   >
