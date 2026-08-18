@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { MEDIA_SOURCES } from "@/models/MediaLibrary";
+import { MEDIA_SOURCES } from "@/types/media";
 
 export const listMediaQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),

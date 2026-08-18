@@ -1,10 +1,17 @@
 import mongoose, { Schema, model, models, type Model } from "mongoose";
 
-export const MEDIA_FILE_TYPES = ["image", "video"] as const;
-export type MediaFileType = (typeof MEDIA_FILE_TYPES)[number];
-
-export const MEDIA_SOURCES = ["upload", "ai-generated"] as const;
-export type MediaSource = (typeof MEDIA_SOURCES)[number];
+import {
+  MEDIA_FILE_TYPES,
+  MEDIA_SOURCES,
+  type MediaFileType,
+  type MediaSource,
+} from "@/types/media";
+export {
+  MEDIA_FILE_TYPES,
+  MEDIA_SOURCES,
+  type MediaFileType,
+  type MediaSource,
+};
 
 export interface IMediaLibrary {
   userId: mongoose.Types.ObjectId;

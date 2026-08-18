@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { SOCIAL_PLATFORMS, type SocialPlatform } from "@/models/SocialAccount";
+import { SOCIAL_PLATFORMS, type SocialPlatform } from "@/types/platforms";
 
 type GenerateTextResponse = {
   content: string;

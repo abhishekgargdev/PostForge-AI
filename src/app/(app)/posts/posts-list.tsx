@@ -40,7 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { POST_STATUSES, type PostStatus } from "@/models/Post";
+import { POST_STATUSES, type PostStatus } from "@/types/posts";
 
 const STATUS_FILTERS: Array<PostStatus | "all"> = ["all", ...POST_STATUSES];
 

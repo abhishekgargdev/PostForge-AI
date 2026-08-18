@@ -22,7 +22,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { SectionSkeleton } from "@/components/ui/loaders";
-import { SOCIAL_PLATFORMS } from "@/models/SocialAccount";
+import { SOCIAL_PLATFORMS } from "@/types/platforms";
 
 function truncate(text: string, length = 140) {
   if (text.length <= length) {

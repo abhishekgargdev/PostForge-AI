@@ -1,5 +1,5 @@
 import type { ISocialAccount } from "@/models/SocialAccount";
-import { SOCIAL_PLATFORMS, type SocialPlatform } from "@/models/SocialAccount";
+import { SOCIAL_PLATFORMS, type SocialPlatform } from "@/types/platforms";
 import type mongoose from "mongoose";
 
 export type AccountRecord = Pick<

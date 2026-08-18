@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { TEMPLATE_PLATFORMS } from "@/models/Template";
+import { TEMPLATE_PLATFORMS } from "@/types/templates";
 
 export const createTemplateSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(120),

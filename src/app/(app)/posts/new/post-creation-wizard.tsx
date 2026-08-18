@@ -44,7 +44,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   SOCIAL_PLATFORMS,
   type SocialPlatform,
-} from "@/models/SocialAccount";
+} from "@/types/platforms";
 import type { PostStatus } from "@/models/Post";
 import { cn } from "@/lib/utils";
 

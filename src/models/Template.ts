@@ -1,12 +1,7 @@
 import mongoose, { Schema, model, models, type Model } from "mongoose";
 
-export const TEMPLATE_PLATFORMS = [
-  "all",
-  "linkedin",
-  "twitter",
-  "facebook",
-] as const;
-export type TemplatePlatform = (typeof TEMPLATE_PLATFORMS)[number];
+import { TEMPLATE_PLATFORMS, type TemplatePlatform } from "@/types/templates";
+export { TEMPLATE_PLATFORMS, type TemplatePlatform };
 
 export interface ITemplate {
   userId?: mongoose.Types.ObjectId | null;
