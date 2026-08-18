@@ -90,3 +90,11 @@ export function formatPlatformLabel(platform: SocialPlatform): string {
       return platform;
   }
 }
+
+export function formatPostScheduleLabel(post: Pick<PostResponse, "status" | "scheduledAt">) {
+  if (post.status === "scheduled" && post.scheduledAt) {
+    return `Scheduled for ${new Date(post.scheduledAt).toLocaleString()}`;
+  }
+
+  return null;
+}

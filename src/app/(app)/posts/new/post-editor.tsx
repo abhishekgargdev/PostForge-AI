@@ -61,6 +61,7 @@ export function PostEditor() {
   const [isGeneratingText, setIsGeneratingText] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [scheduledAt, setScheduledAt] = useState("");
   const [libraryOpen, setLibraryOpen] = useState(false);
@@ -157,6 +158,55 @@ export function PostEditor() {
     setMediaLibraryId("");
   }
 
+  async function handlePublishNow() {
+    if (!content.trim()) {
+      toast.error("Add post content before publishing.");
+      return;
+    }
+
+    if (platforms.length === 0) {
+      toast.error("Select at least one platform.");
+      return;
+    }
+
+    setIsPublishing(true);
+
+    try {
+      const post = await apiClient<PostResponse>("/api/posts", {
+        method: "POST",
+        body: JSON.stringify({
+          content: content.trim(),
+          aiPrompt: ideaPrompt.trim() || undefined,
+          platforms,
+          imageUrl: imageUrl || undefined,
+          mediaLibraryId: mediaLibraryId || undefined,
+          status: "draft",
+        }),
+      });
+
+      const result = await apiClient<{
+        post: PostResponse;
+      }>(`/api/posts/${post.id}/publish`, {
+        method: "POST",
+      });
+
+      toast.success(
+        result.post.status === "published"
+          ? "Post published"
+          : result.post.status === "failed"
+            ? "Publishing failed on all platforms"
+            : "Post is publishing",
+      );
+      router.push("/posts");
+      router.refresh();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to publish post",
+      );
+      setIsPublishing(false);
+    }
+  }
+
   async function savePost(
     status: PostStatus,
     options?: { scheduledAt?: string },
@@ -245,7 +295,7 @@ export function PostEditor() {
               rows={4}
               className="min-h-28"
               placeholder="Launch our spring campaign and highlight the new scheduling workflow..."
-              disabled={isGeneratingText || isGeneratingImage || isSaving}
+              disabled={isGeneratingText || isGeneratingImage || isSaving || isPublishing}
             />
           </div>
 
@@ -267,7 +317,7 @@ export function PostEditor() {
                       className="size-4 rounded border-input"
                       checked={checked}
                       onChange={() => togglePlatform(platform)}
-                      disabled={isGeneratingText || isGeneratingImage || isSaving}
+                      disabled={isGeneratingText || isGeneratingImage || isSaving || isPublishing}
                     />
                     <span className="text-sm font-medium">
                       {formatPlatformLabel(platform)}
@@ -283,7 +333,7 @@ export function PostEditor() {
             <Select
               value={tone}
               onValueChange={(value) => setTone(value as PostTone)}
-              disabled={isGeneratingText || isGeneratingImage || isSaving}
+              disabled={isGeneratingText || isGeneratingImage || isSaving || isPublishing}
             >
               <SelectTrigger id="post-tone" className="h-11 w-full">
                 <SelectValue placeholder="Select tone" />
@@ -302,7 +352,7 @@ export function PostEditor() {
             <Button
               type="button"
               className="h-11 flex-1"
-              disabled={isGeneratingText || isGeneratingImage || isSaving}
+              disabled={isGeneratingText || isGeneratingImage || isSaving || isPublishing}
               onClick={handleGenerateText}
             >
               {isGeneratingText ? (
@@ -319,7 +369,7 @@ export function PostEditor() {
               type="button"
               variant="secondary"
               className="h-11 flex-1"
-              disabled={isGeneratingText || isGeneratingImage || isSaving}
+              disabled={isGeneratingText || isGeneratingImage || isSaving || isPublishing}
               onClick={handleGenerateImage}
             >
               {isGeneratingImage ? (
@@ -359,7 +409,7 @@ export function PostEditor() {
                 type="button"
                 variant="ghost"
                 className="h-11 flex-1"
-                disabled={isSaving}
+                disabled={isSaving || isPublishing}
                 onClick={clearSelectedImage}
               >
                 Remove image
@@ -381,7 +431,7 @@ export function PostEditor() {
                 type="button"
                 variant="outline"
                 className="h-11"
-                disabled={isSaving}
+                disabled={isSaving || isPublishing}
                 onClick={handleGenerateImage}
               >
                 Regenerate with AI
@@ -409,7 +459,7 @@ export function PostEditor() {
             rows={8}
             className="min-h-40"
             placeholder="Write or generate your post content..."
-            disabled={isSaving}
+            disabled={isSaving || isPublishing}
           />
         </CardContent>
       </Card>
@@ -419,7 +469,7 @@ export function PostEditor() {
           type="button"
           variant="outline"
           className="h-11 flex-1"
-          disabled={isSaving}
+          disabled={isSaving || isPublishing}
           onClick={() => savePost("draft")}
         >
           {isSaving ? (
@@ -436,7 +486,7 @@ export function PostEditor() {
           type="button"
           variant="secondary"
           className="h-11 flex-1"
-          disabled={isSaving}
+          disabled={isSaving || isPublishing}
           onClick={() => setScheduleOpen(true)}
         >
           Schedule
@@ -445,10 +495,17 @@ export function PostEditor() {
         <Button
           type="button"
           className="h-11 flex-1"
-          disabled={isSaving}
-          onClick={() => savePost("publishing")}
+          disabled={isSaving || isPublishing}
+          onClick={handlePublishNow}
         >
-          Publish Now
+          {isPublishing ? (
+            <>
+              <Loader size="sm" label="Publishing post" />
+              Publishing...
+            </>
+          ) : (
+            "Publish Now"
+          )}
         </Button>
       </div>
 
@@ -499,7 +556,7 @@ export function PostEditor() {
             <Button
               type="button"
               className="h-11"
-              disabled={isSaving}
+              disabled={isSaving || isPublishing}
               onClick={handleScheduleSubmit}
             >
               {isSaving ? (

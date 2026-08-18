@@ -11,6 +11,7 @@ import {
   parseScheduledAt,
 } from "@/lib/validation/posts";
 import { connectDB } from "@/lib/db";
+import { ensurePostPlatformsForPost } from "@/lib/publishing/ensure-post-platforms";
 import Post from "@/models/Post";
 
 export async function GET(request: NextRequest) {
@@ -121,6 +122,10 @@ export async function POST(request: NextRequest) {
       scheduledAt,
       publishedAt,
     });
+
+    if (parsed.data.status === "scheduled") {
+      await ensurePostPlatformsForPost(post);
+    }
 
     return NextResponse.json(
       {

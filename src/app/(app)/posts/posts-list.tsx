@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
 import {
   formatPlatformLabel,
+  formatPostScheduleLabel,
   getStatusBadgeVariant,
   type PaginatedPostsResponse,
   type PostResponse,
@@ -176,7 +177,8 @@ export function PostsList() {
                     </Badge>
                   </div>
                   <CardDescription>
-                    Updated {format(new Date(post.updatedAt), "MMM d, yyyy h:mm a")}
+                    {formatPostScheduleLabel(post) ??
+                      `Updated ${format(new Date(post.updatedAt), "MMM d, yyyy h:mm a")}`}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-wrap gap-2">
@@ -197,7 +199,7 @@ export function PostsList() {
                   <TableHead>Content</TableHead>
                   <TableHead>Platforms</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Updated</TableHead>
+                  <TableHead>Schedule / Updated</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -216,12 +218,20 @@ export function PostsList() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={getStatusBadgeVariant(post.status)}>
-                        {post.status}
-                      </Badge>
+                      <div className="space-y-1">
+                        <Badge variant={getStatusBadgeVariant(post.status)}>
+                          {post.status}
+                        </Badge>
+                        {post.status === "scheduled" && post.scheduledAt ? (
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(post.scheduledAt), "MMM d, yyyy h:mm a")}
+                          </p>
+                        ) : null}
+                      </div>
                     </TableCell>
                     <TableCell>
-                      {format(new Date(post.updatedAt), "MMM d, yyyy h:mm a")}
+                      {formatPostScheduleLabel(post) ??
+                        format(new Date(post.updatedAt), "MMM d, yyyy h:mm a")}
                     </TableCell>
                   </TableRow>
                 ))}

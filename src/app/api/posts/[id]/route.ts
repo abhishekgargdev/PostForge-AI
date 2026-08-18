@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { isAuthError, requireAuth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
+import { ensurePostPlatformsForPost } from "@/lib/publishing/ensure-post-platforms";
 import { toPostResponse } from "@/lib/posts/serialize";
 import {
   parseScheduledAt,
@@ -118,6 +119,10 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     }
 
     await post.save();
+
+    if (post.status === "scheduled") {
+      await ensurePostPlatformsForPost(post);
+    }
 
     return NextResponse.json({
       success: true,
