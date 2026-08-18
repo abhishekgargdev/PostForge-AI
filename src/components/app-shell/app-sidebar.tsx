@@ -8,6 +8,7 @@ import {
   appNavItems,
   isNavItemActive,
 } from "@/components/app-shell/nav-items";
+import { GradientText } from "@/components/ui/gradient-text";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -16,6 +17,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+
+const navIconProps = {
+  className: "size-5 shrink-0",
+  strokeWidth: 2,
+  "aria-hidden": true as const,
+};
 
 type AppSidebarProps = {
   collapsed: boolean;
@@ -39,9 +46,9 @@ export function AppSidebar({ collapsed, onToggleCollapsed }: AppSidebarProps) {
         )}
       >
         {!collapsed ? (
-          <span className="truncate px-1 text-sm font-semibold tracking-tight">
+          <GradientText className="truncate px-1 text-sm font-heading font-semibold">
             PostForge AI
-          </span>
+          </GradientText>
         ) : null}
         <Button
           type="button"
@@ -52,9 +59,9 @@ export function AppSidebar({ collapsed, onToggleCollapsed }: AppSidebarProps) {
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? (
-            <PanelLeftOpenIcon className="size-4" />
+            <PanelLeftOpenIcon className="size-5" strokeWidth={2} />
           ) : (
-            <PanelLeftCloseIcon className="size-4" />
+            <PanelLeftCloseIcon className="size-5" strokeWidth={2} />
           )}
         </Button>
       </div>
@@ -73,12 +80,12 @@ export function AppSidebar({ collapsed, onToggleCollapsed }: AppSidebarProps) {
                   className={cn(
                     "flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors",
                     active
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground",
+                      ? "bg-gradient-forge text-white shadow-sm"
+                      : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800",
                     collapsed && "justify-center px-0",
                   )}
                 >
-                  <Icon className="size-5 shrink-0" aria-hidden />
+                  <Icon {...navIconProps} />
                   {!collapsed ? <span className="truncate">{item.label}</span> : null}
                 </Link>
               );

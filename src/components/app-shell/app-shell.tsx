@@ -5,6 +5,7 @@ import { useState } from "react";
 import { AppBottomNav } from "@/components/app-shell/app-bottom-nav";
 import { AppSidebar } from "@/components/app-shell/app-sidebar";
 import { AppTopBar } from "@/components/app-shell/app-top-bar";
+import { PageTransition } from "@/components/ui/page-transition";
 import type { PublicUser } from "@/lib/auth";
 
 type AppShellProps = {
@@ -26,7 +27,7 @@ export function AppShell({ user, children }: AppShellProps) {
         <AppTopBar user={user} />
 
         <div className="flex min-h-0 flex-1 flex-col pb-16 md:pb-0">
-          {children}
+          <PageTransition>{children}</PageTransition>
         </div>
 
         <AppBottomNav />

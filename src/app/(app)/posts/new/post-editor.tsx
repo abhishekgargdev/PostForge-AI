@@ -10,7 +10,10 @@ import type { PostResponse } from "@/lib/posts/serialize";
 import { formatPlatformLabel } from "@/lib/posts/serialize";
 import type { MediaResponse } from "@/lib/media/serialize";
 import { POST_TONES, type PostTone } from "@/lib/validation/posts";
+import { PLATFORM_CHAR_LIMITS } from "@/lib/oauth/platforms";
 import { MediaPickerDialog } from "@/components/media/media-picker-dialog";
+import { PlatformChip } from "@/components/posts/platform-chip";
+import { SparkBurst } from "@/components/ui/spark-burst";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -66,6 +69,7 @@ export function PostEditor() {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [scheduledAt, setScheduledAt] = useState("");
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [justGenerated, setJustGenerated] = useState(false);
 
   useEffect(() => {
     const prompt = searchParams.get("prompt");
@@ -82,6 +86,12 @@ export function PostEditor() {
       setPlatforms([platform as SocialPlatform]);
     }
   }, [searchParams]);
+
+  function triggerGenerationBurst() {
+    setJustGenerated(false);
+    requestAnimationFrame(() => setJustGenerated(true));
+    window.setTimeout(() => setJustGenerated(false), 600);
+  }
 
   function togglePlatform(platform: SocialPlatform) {
     setPlatforms((current) =>
@@ -116,6 +126,7 @@ export function PostEditor() {
       });
 
       setContent(data.content);
+      triggerGenerationBurst();
 
       if (platforms.length > 1) {
         toast.success(
@@ -154,6 +165,7 @@ export function PostEditor() {
 
       setImageUrl(data.fileUrl);
       setMediaLibraryId(data.id);
+      triggerGenerationBurst();
       toast.success("Image generated");
     } catch (error) {
       toast.error(
@@ -285,6 +297,13 @@ export function PostEditor() {
     void savePost("scheduled", { scheduledAt: scheduleDate.toISOString() });
   }
 
+  const charLimit =
+    platforms.length > 0
+      ? Math.min(...platforms.map((platform) => PLATFORM_CHAR_LIMITS[platform]))
+      : 0;
+  const charCount = content.length;
+  const charRatio = charLimit > 0 ? charCount / charLimit : 0;
+
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:max-w-3xl md:p-6">
       <div className="space-y-1">
@@ -318,30 +337,21 @@ export function PostEditor() {
 
           <div className="grid gap-3">
             <Label>Platforms</Label>
-            <div className="grid gap-2 sm:grid-cols-3">
-              {PLATFORM_OPTIONS.map((platform) => {
-                const checked = platforms.includes(platform);
-
-                return (
-                  <label
-                    key={platform}
-                    className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 ${
-                      checked ? "border-primary bg-primary/5" : ""
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      className="size-4 rounded border-input"
-                      checked={checked}
-                      onChange={() => togglePlatform(platform)}
-                      disabled={isGeneratingText || isGeneratingImage || isSaving || isPublishing}
-                    />
-                    <span className="text-sm font-medium">
-                      {formatPlatformLabel(platform)}
-                    </span>
-                  </label>
-                );
-              })}
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              {PLATFORM_OPTIONS.map((platform) => (
+                <PlatformChip
+                  key={platform}
+                  platform={platform}
+                  selected={platforms.includes(platform)}
+                  disabled={
+                    isGeneratingText ||
+                    isGeneratingImage ||
+                    isSaving ||
+                    isPublishing
+                  }
+                  onToggle={() => togglePlatform(platform)}
+                />
+              ))}
             </div>
           </div>
 
@@ -365,7 +375,11 @@ export function PostEditor() {
             </Select>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="relative flex flex-col gap-3 sm:flex-row">
+            <SparkBurst
+              play={justGenerated}
+              className="left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+            />
             <Button
               type="button"
               className="h-11 flex-1"
@@ -469,7 +483,7 @@ export function PostEditor() {
             Edit the generated copy before saving or scheduling.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-2">
           <Textarea
             value={content}
             onChange={(event) => setContent(event.target.value)}
@@ -478,6 +492,19 @@ export function PostEditor() {
             placeholder="Write or generate your post content..."
             disabled={isSaving || isPublishing}
           />
+          {charLimit > 0 ? (
+            <p
+              className={`text-right font-mono text-xs ${
+                charRatio > 1
+                  ? "text-ember"
+                  : charRatio >= 0.9
+                    ? "text-amber-500"
+                    : "text-neutral-500"
+              }`}
+            >
+              {charCount.toLocaleString()} / {charLimit.toLocaleString()}
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 

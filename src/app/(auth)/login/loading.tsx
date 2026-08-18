@@ -1,14 +1,13 @@
-import { SectionSkeleton } from "@/components/ui/loaders";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function LoginLoading() {
   return (
-    <div className="flex flex-col gap-6">
-      <div className="space-y-2 text-center">
-        <SectionSkeleton rows={1} className="mx-auto max-w-[12rem]" />
-        <SectionSkeleton rows={1} className="mx-auto max-w-[16rem]" />
-      </div>
-      <SectionSkeleton rows={2} />
-      <SectionSkeleton rows={1} className="h-11" />
+    <div className="w-full max-w-md space-y-4">
+      <Skeleton className="h-8 w-40" />
+      <Skeleton className="h-4 w-56" />
+      <Skeleton className="h-11 w-full rounded-lg" />
+      <Skeleton className="h-11 w-full rounded-lg" />
+      <Skeleton className="h-11 w-full rounded-lg" />
     </div>
   );
 }

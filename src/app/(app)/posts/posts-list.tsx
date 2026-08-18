@@ -3,17 +3,17 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, SparklesIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { apiClient } from "@/lib/api-client";
 import {
   formatPlatformLabel,
   formatPostScheduleLabel,
-  getStatusBadgeVariant,
   type PaginatedPostsResponse,
   type PostResponse,
 } from "@/lib/posts/serialize";
+import { PostStatusBadge } from "@/components/posts/post-status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +23,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { SectionSkeleton } from "@/components/ui/loaders";
 import {
   Select,
@@ -148,20 +149,17 @@ export function PostsList() {
           </div>
         </>
       ) : posts.length === 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>No posts yet</CardTitle>
-            <CardDescription>
-              Create your first post to see it listed here.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        <EmptyState
+          icon={SparklesIcon}
+          title="No posts yet"
+          description="Your drafts, scheduled posts, and published content will live here."
+          action={
             <Button render={<Link href="/posts/new" />} className="h-11">
-              <PlusIcon />
+              <PlusIcon className="size-5" strokeWidth={2} />
               Create post
             </Button>
-          </CardContent>
-        </Card>
+          }
+        />
       ) : (
         <>
           <div className="grid gap-4 md:hidden">
@@ -172,9 +170,7 @@ export function PostsList() {
                     <CardTitle className="line-clamp-2 text-base">
                       {truncate(post.content, 80)}
                     </CardTitle>
-                    <Badge variant={getStatusBadgeVariant(post.status)}>
-                      {post.status}
-                    </Badge>
+                    <PostStatusBadge status={post.status} />
                   </div>
                   <CardDescription>
                     {formatPostScheduleLabel(post) ??
@@ -219,9 +215,7 @@ export function PostsList() {
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1">
-                        <Badge variant={getStatusBadgeVariant(post.status)}>
-                          {post.status}
-                        </Badge>
+                        <PostStatusBadge status={post.status} />
                         {post.status === "scheduled" && post.scheduledAt ? (
                           <p className="text-xs text-muted-foreground">
                             {format(new Date(post.scheduledAt), "MMM d, yyyy h:mm a")}

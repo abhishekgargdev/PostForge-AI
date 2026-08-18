@@ -1,7 +1,3 @@
 export default function AuthLayout({ children }: LayoutProps<"/">) {
-  return (
-    <div className="flex min-h-full flex-1 items-center justify-center px-4 py-8">
-      <div className="w-full max-w-sm">{children}</div>
-    </div>
-  );
+  return <div className="flex min-h-full flex-1 flex-col bg-cloud">{children}</div>;
 }

@@ -75,9 +75,9 @@ export function LoginForm() {
   }
 
   return (
-    <Card>
-      <CardHeader className="text-center">
-        <CardTitle className="text-xl">Sign in to PostForge AI</CardTitle>
+    <Card className="w-full max-w-md border-neutral-200 bg-white shadow-sm">
+      <CardHeader>
+        <CardTitle className="text-xl font-heading">Sign in</CardTitle>
         <CardDescription>
           Use your admin credentials to access the dashboard.
         </CardDescription>

@@ -3,14 +3,19 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
+import {
+  CalendarClockIcon,
+  CheckCircle2Icon,
+  FileTextIcon,
+  SparklesIcon,
+} from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 
 import { apiClient } from "@/lib/api-client";
 import type { AnalyticsOverview } from "@/lib/analytics/overview";
-import {
-  formatPlatformLabel,
-  getStatusBadgeVariant,
-} from "@/lib/posts/serialize";
+import { formatPlatformLabel } from "@/lib/posts/serialize";
+import { PostStatusBadge } from "@/components/posts/post-status-badge";
 import { PublishedPostsChart } from "@/components/dashboard/published-posts-chart";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,13 +26,35 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { SectionSkeleton } from "@/components/ui/loaders";
+import { cn } from "@/lib/utils";
 
 const statCards = [
-  { key: "totalPosts" as const, title: "Total Posts" },
-  { key: "scheduled" as const, title: "Scheduled" },
-  { key: "publishedThisWeek" as const, title: "Published This Week" },
-  { key: "drafts" as const, title: "Drafts" },
+  {
+    key: "totalPosts" as const,
+    title: "Total Posts",
+    icon: SparklesIcon,
+    tint: "bg-forge/10 text-forge",
+  },
+  {
+    key: "scheduled" as const,
+    title: "Scheduled",
+    icon: CalendarClockIcon,
+    tint: "bg-circuit/10 text-circuit",
+  },
+  {
+    key: "publishedThisWeek" as const,
+    title: "Published This Week",
+    icon: CheckCircle2Icon,
+    tint: "bg-emerald-50 text-emerald-700",
+  },
+  {
+    key: "drafts" as const,
+    title: "Drafts",
+    icon: FileTextIcon,
+    tint: "bg-neutral-100 text-neutral-600",
+  },
 ];
 
 function truncate(text: string, length = 100) {
@@ -36,6 +63,58 @@ function truncate(text: string, length = 100) {
   }
 
   return `${text.slice(0, length).trim()}...`;
+}
+
+function StatCard({
+  title,
+  icon: Icon,
+  tint,
+  value,
+  isLoading,
+}: {
+  title: string;
+  icon: typeof SparklesIcon;
+  tint: string;
+  value: number;
+  isLoading: boolean;
+}) {
+  const reduceMotion = useReducedMotion();
+
+  return (
+    <motion.div
+      whileHover={reduceMotion ? undefined : { y: -4 }}
+      transition={{ duration: 0.18, ease: "easeOut" }}
+      className="h-full"
+    >
+      <Card
+        size="sm"
+        className="h-full transition-shadow duration-200 hover:shadow-md motion-reduce:hover:shadow-none"
+      >
+        <CardHeader className="flex-row items-start justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium text-neutral-500">
+            {title}
+          </CardTitle>
+          <div
+            className={cn(
+              "flex size-9 shrink-0 items-center justify-center rounded-xl",
+              tint,
+            )}
+          >
+            <Icon className="size-5" strokeWidth={2} aria-hidden />
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <SectionSkeleton rows={1} rowClassName="h-9 w-20" />
+          ) : (
+            <p className="text-3xl font-semibold tracking-tight text-ink">
+              {value}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
 }
 
 export function DashboardPage() {
@@ -73,22 +152,14 @@ export function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {statCards.map((card) => (
-          <Card key={card.key} size="sm">
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {card.title}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <SectionSkeleton rows={1} rowClassName="h-9 w-20" />
-              ) : (
-                <p className="text-3xl font-semibold tracking-tight">
-                  {overview?.counts[card.key] ?? 0}
-                </p>
-              )}
-            </CardContent>
-          </Card>
+          <StatCard
+            key={card.key}
+            title={card.title}
+            icon={card.icon}
+            tint={card.tint}
+            isLoading={isLoading}
+            value={overview?.counts[card.key] ?? 0}
+          />
         ))}
       </div>
 
@@ -119,12 +190,12 @@ export function DashboardPage() {
               overview.platformMetrics.map((metric) => (
                 <div
                   key={metric.platform}
-                  className="rounded-lg border p-3"
+                  className="rounded-lg border border-neutral-200 p-3"
                 >
                   <p className="text-sm font-medium">
                     {formatPlatformLabel(metric.platform)}
                   </p>
-                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-neutral-500">
                     <span>Published: {metric.published}</span>
                     <span>Pending: {metric.pending}</span>
                     <span>Failed: {metric.failed}</span>
@@ -156,9 +227,12 @@ export function DashboardPage() {
           {isLoading ? (
             <SectionSkeleton rows={5} rowClassName="h-14 rounded-lg" />
           ) : overview && overview.recentPosts.length > 0 ? (
-            <ul className="divide-y">
+            <ul className="divide-y divide-neutral-200">
               {overview.recentPosts.map((post) => (
-                <li key={post.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <li
+                  key={post.id}
+                  className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
+                >
                   <div className="min-w-0 space-y-1">
                     <p className="truncate text-sm font-medium">
                       {truncate(post.content)}
@@ -168,9 +242,7 @@ export function DashboardPage() {
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant={getStatusBadgeVariant(post.status)}>
-                      {post.status}
-                    </Badge>
+                    <PostStatusBadge status={post.status} />
                     {post.platforms.map((platform) => (
                       <Badge key={platform} variant="outline">
                         {formatPlatformLabel(platform)}
@@ -181,18 +253,20 @@ export function DashboardPage() {
               ))}
             </ul>
           ) : (
-            <div className="flex flex-col items-start gap-3 py-4">
-              <p className="text-sm text-muted-foreground">
-                No posts yet. Create your first draft to see activity here.
-              </p>
-              <Button
-                render={<Link href="/posts/new" />}
-                nativeButton={false}
-                className="h-11"
-              >
-                Create post
-              </Button>
-            </div>
+            <EmptyState
+              icon={SparklesIcon}
+              title="No posts yet"
+              description="Create your first post and activity will show up here."
+              action={
+                <Button
+                  render={<Link href="/posts/new" />}
+                  nativeButton={false}
+                  className="h-11"
+                >
+                  Create post
+                </Button>
+              }
+            />
           )}
         </CardContent>
       </Card>

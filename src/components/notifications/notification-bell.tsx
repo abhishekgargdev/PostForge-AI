@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { BellIcon } from "lucide-react";
+import { BellIcon, BellRingIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { apiClient } from "@/lib/api-client";
@@ -13,6 +13,7 @@ import type {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SectionSkeleton } from "@/components/ui/loaders";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Sheet,
   SheetContent,
@@ -102,7 +103,7 @@ export function NotificationBell() {
           />
         }
       >
-        <BellIcon />
+        <BellIcon className="size-5" strokeWidth={2} />
         {unreadCount > 0 ? (
           <Badge
             variant="destructive"
@@ -125,9 +126,12 @@ export function NotificationBell() {
           {isLoading ? (
             <SectionSkeleton rows={5} rowClassName="h-20 rounded-lg" />
           ) : notifications.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              No notifications yet.
-            </p>
+            <EmptyState
+              icon={BellRingIcon}
+              title="All caught up"
+              description="Publish and AI alerts will appear here when something needs your attention."
+              className="border-none bg-transparent py-6"
+            />
           ) : (
             <ul className="divide-y">
               {notifications.map((notification) => (

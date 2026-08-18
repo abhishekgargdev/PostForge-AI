@@ -1,18 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { format } from "date-fns";
-import { ImagePlusIcon, Trash2Icon, UploadIcon } from "lucide-react";
+import { ImageIcon, ImagePlusIcon, UploadIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { apiClient, uploadApiClient } from "@/lib/api-client";
 import {
-  formatMediaSourceLabel,
-  getMediaPreviewUrl,
   type MediaResponse,
   type PaginatedMediaResponse,
 } from "@/lib/media/serialize";
-import { Badge } from "@/components/ui/badge";
+import { MediaGridItem } from "@/components/media/media-grid-item";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,6 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Loader } from "@/components/ui/loaders";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -136,7 +134,7 @@ export function MediaLibraryPage() {
           <DialogTrigger
             render={
               <Button className="h-11">
-                <UploadIcon />
+                <UploadIcon className="size-5" strokeWidth={2} />
                 Upload
               </Button>
             }
@@ -159,10 +157,13 @@ export function MediaLibraryPage() {
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
               className={`flex min-h-44 cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed px-4 py-8 text-center transition-colors ${
-                isDragging ? "border-primary bg-primary/5" : "border-border"
+                isDragging ? "border-forge bg-forge/5" : "border-border"
               }`}
             >
-              <ImagePlusIcon className="size-8 text-muted-foreground" />
+              <ImagePlusIcon
+                className="size-8 text-muted-foreground"
+                strokeWidth={1.75}
+              />
               <div className="space-y-1">
                 <p className="text-sm font-medium">
                   {selectedFile ? selectedFile.name : "Drop an image here"}
@@ -218,50 +219,27 @@ export function MediaLibraryPage() {
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-xl border border-dashed p-8 text-center">
-          <p className="text-sm text-muted-foreground">
-            No media yet. Upload an image or generate one from the post editor.
-          </p>
-        </div>
+        <EmptyState
+          icon={ImageIcon}
+          title="No media yet"
+          description="Upload an image or generate one from the post editor to build your library."
+          action={
+            <Button className="h-11" onClick={() => setIsUploadOpen(true)}>
+              <UploadIcon className="size-5" strokeWidth={2} />
+              Upload image
+            </Button>
+          }
+        />
       ) : (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {items.map((item) => (
-            <div
+          {items.map((item, index) => (
+            <MediaGridItem
               key={item.id}
-              className="group relative overflow-hidden rounded-xl border bg-card"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={getMediaPreviewUrl(item)}
-                alt={item.fileName}
-                className="aspect-square w-full object-cover"
-              />
-              <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2">
-                <Badge variant="secondary">
-                  {formatMediaSourceLabel(item.source)}
-                </Badge>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon-sm"
-                  aria-label={`Delete ${item.fileName}`}
-                  disabled={deletingId === item.id}
-                  onClick={() => handleDelete(item.id)}
-                >
-                  {deletingId === item.id ? (
-                    <Loader size="sm" label="Deleting media" />
-                  ) : (
-                    <Trash2Icon />
-                  )}
-                </Button>
-              </div>
-              <div className="space-y-1 border-t p-2">
-                <p className="truncate text-xs font-medium">{item.fileName}</p>
-                <p className="text-[0.6875rem] text-muted-foreground">
-                  {format(new Date(item.createdAt), "MMM d, yyyy")}
-                </p>
-              </div>
-            </div>
+              item={item}
+              index={index}
+              isDeleting={deletingId === item.id}
+              onDelete={handleDelete}
+            />
           ))}
         </div>
       )}

@@ -1,4 +1,6 @@
-import { Loader2Icon } from "lucide-react";
+"use client";
+
+import { motion, useReducedMotion } from "framer-motion";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -20,10 +22,40 @@ export function Loader({
   label = "Loading",
   size = "md",
 }: LoaderProps) {
+  const reduceMotion = useReducedMotion();
+
+  if (reduceMotion) {
+    return (
+      <span
+        aria-label={label}
+        role="status"
+        className={cn(
+          "inline-block rounded-full border-2 border-forge border-t-transparent",
+          loaderSizes[size],
+          className,
+        )}
+      />
+    );
+  }
+
   return (
-    <Loader2Icon
+    <motion.span
       aria-label={label}
-      className={cn("animate-spin", loaderSizes[size], className)}
+      role="status"
+      className={cn("inline-block rounded-full", loaderSizes[size], className)}
+      style={{
+        background:
+          "conic-gradient(from 0deg, var(--color-forge, #6D5DFC), var(--color-circuit, #22D3EE), var(--color-forge, #6D5DFC))",
+        WebkitMask:
+          "radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px))",
+        mask: "radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px))",
+      }}
+      animate={{ rotate: 360 }}
+      transition={{
+        repeat: Infinity,
+        duration: 0.9,
+        ease: "linear",
+      }}
     />
   );
 }

@@ -9,6 +9,12 @@ import {
 } from "@/components/app-shell/nav-items";
 import { cn } from "@/lib/utils";
 
+const navIconProps = {
+  className: "size-5 shrink-0",
+  strokeWidth: 2,
+  "aria-hidden": true as const,
+};
+
 export function AppBottomNav() {
   const pathname = usePathname();
 
@@ -29,13 +35,17 @@ export function AppBottomNav() {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex min-h-16 flex-col items-center justify-center gap-1 px-1 text-[0.6875rem] font-medium transition-colors",
-                  active
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground",
+                  "relative flex min-h-16 flex-col items-center justify-center gap-1 px-1 text-[0.6875rem] font-medium transition-colors",
+                  active ? "text-forge" : "text-neutral-500 hover:text-neutral-800",
                 )}
               >
-                <Icon className="size-5 shrink-0" aria-hidden />
+                {active ? (
+                  <span
+                    className="absolute inset-x-2 top-1 h-1 rounded-full bg-gradient-forge"
+                    aria-hidden
+                  />
+                ) : null}
+                <Icon {...navIconProps} />
                 <span className="truncate">{label}</span>
               </Link>
             </li>
