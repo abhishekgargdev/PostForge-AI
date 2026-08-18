@@ -14,21 +14,23 @@ export type PostTone = (typeof POST_TONES)[number];
 
 const scheduledAtSchema = z.union([z.string().datetime(), z.date()]);
 
+const createPostShape = {
+  content: z.string().trim().min(1, "Content is required"),
+  aiPrompt: z.string().trim().optional(),
+  platforms: z
+    .array(z.enum(SOCIAL_PLATFORMS))
+    .min(1, "Select at least one platform"),
+  platformContent: z
+    .record(z.enum(SOCIAL_PLATFORMS), z.string().trim().min(1))
+    .optional(),
+  imageUrl: z.string().url().optional(),
+  mediaLibraryId: z.string().trim().optional(),
+  status: z.enum(POST_STATUSES).default("draft"),
+  scheduledAt: scheduledAtSchema.optional(),
+};
+
 export const createPostSchema = z
-  .object({
-    content: z.string().trim().min(1, "Content is required"),
-    aiPrompt: z.string().trim().optional(),
-    platforms: z
-      .array(z.enum(SOCIAL_PLATFORMS))
-      .min(1, "Select at least one platform"),
-    platformContent: z
-      .record(z.enum(SOCIAL_PLATFORMS), z.string().trim().min(1))
-      .optional(),
-    imageUrl: z.string().url().optional(),
-    mediaLibraryId: z.string().trim().optional(),
-    status: z.enum(POST_STATUSES).default("draft"),
-    scheduledAt: scheduledAtSchema.optional(),
-  })
+  .object(createPostShape)
   .superRefine((value, context) => {
     if (value.status === "scheduled" && !value.scheduledAt) {
       context.addIssue({
@@ -39,8 +41,10 @@ export const createPostSchema = z
     }
   });
 
-export const updatePostSchema = createPostSchema.partial().superRefine(
-  (value, context) => {
+export const updatePostSchema = z
+  .object(createPostShape)
+  .partial()
+  .superRefine((value, context) => {
     if (value.status === "scheduled" && !value.scheduledAt) {
       context.addIssue({
         code: "custom",
@@ -48,8 +52,7 @@ export const updatePostSchema = createPostSchema.partial().superRefine(
         path: ["scheduledAt"],
       });
     }
-  },
-);
+  });
 
 export const listPostsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),

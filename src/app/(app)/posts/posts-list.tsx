@@ -103,7 +103,7 @@ export function PostsList() {
           </p>
         </div>
 
-        <Button render={<Link href="/posts/new" />} className="h-11">
+        <Button render={<Link href="/posts/new" />} nativeButton={false} className="h-11">
           <PlusIcon />
           Create post
         </Button>
@@ -154,7 +154,7 @@ export function PostsList() {
           title="No posts yet"
           description="Your drafts, scheduled posts, and published content will live here."
           action={
-            <Button render={<Link href="/posts/new" />} className="h-11">
+            <Button render={<Link href="/posts/new" />} nativeButton={false} className="h-11">
               <PlusIcon className="size-5" strokeWidth={2} />
               Create post
             </Button>
