@@ -21,6 +21,9 @@ export const createPostSchema = z
     platforms: z
       .array(z.enum(SOCIAL_PLATFORMS))
       .min(1, "Select at least one platform"),
+    platformContent: z
+      .record(z.enum(SOCIAL_PLATFORMS), z.string().trim().min(1))
+      .optional(),
     imageUrl: z.string().url().optional(),
     mediaLibraryId: z.string().trim().optional(),
     status: z.enum(POST_STATUSES).default("draft"),

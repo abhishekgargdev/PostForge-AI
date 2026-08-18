@@ -123,7 +123,12 @@ export async function POST(request: NextRequest) {
       publishedAt,
     });
 
-    if (parsed.data.status === "scheduled") {
+    if (
+      parsed.data.platformContent &&
+      Object.keys(parsed.data.platformContent).length > 0
+    ) {
+      await ensurePostPlatformsForPost(post, parsed.data.platformContent);
+    } else if (parsed.data.status === "scheduled") {
       await ensurePostPlatformsForPost(post);
     }
 

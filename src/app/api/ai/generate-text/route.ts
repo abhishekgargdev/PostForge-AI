@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 
 import {
   generateText,
@@ -8,13 +7,7 @@ import {
 import { isAuthError, requireAuth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { createAiGenerationFailureNotification } from "@/lib/notifications/create";
-import { SOCIAL_PLATFORMS } from "@/models/SocialAccount";
-
-const generateTextSchema = z.object({
-  prompt: z.string().trim().min(1, "Prompt is required"),
-  platform: z.enum(SOCIAL_PLATFORMS),
-  tone: z.string().trim().min(1, "Tone is required"),
-});
+import { generateTextSchema } from "@/lib/validation/ai";
 
 export async function POST(request: NextRequest) {
   let userId: string | undefined;

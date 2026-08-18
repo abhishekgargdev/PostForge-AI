@@ -2,7 +2,7 @@ import { Suspense } from "react";
 
 import { SectionSkeleton } from "@/components/ui/loaders";
 
-import { PostEditor } from "./post-editor";
+import { PostCreationWizard } from "./post-creation-wizard";
 
 function PostEditorFallback() {
   return (
@@ -16,7 +16,7 @@ function PostEditorFallback() {
 export default function CreatePostPage() {
   return (
     <Suspense fallback={<PostEditorFallback />}>
-      <PostEditor />
+      <PostCreationWizard />
     </Suspense>
   );
 }

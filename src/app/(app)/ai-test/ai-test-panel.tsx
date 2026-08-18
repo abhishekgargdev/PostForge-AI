@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { apiClient } from "@/lib/api-client";
+import { POST_TONES, type PostTone } from "@/lib/validation/posts";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -41,7 +42,7 @@ export function AiTestPanel() {
     "Announce our new AI-powered social scheduling feature for small businesses.",
   );
   const [platform, setPlatform] = useState<SocialPlatform>("linkedin");
-  const [tone, setTone] = useState("professional");
+  const [tone, setTone] = useState<PostTone>("professional");
   const [generatedText, setGeneratedText] = useState("");
   const [generatedImageUrl, setGeneratedImageUrl] = useState("");
   const [isGeneratingText, setIsGeneratingText] = useState(false);
@@ -53,7 +54,11 @@ export function AiTestPanel() {
     try {
       const data = await apiClient<GenerateTextResponse>("/api/ai/generate-text", {
         method: "POST",
-        body: JSON.stringify({ prompt, platform, tone }),
+        body: JSON.stringify({
+          customPrompt: prompt,
+          platform,
+          tone,
+        }),
       });
 
       setGeneratedText(data.content);
@@ -143,13 +148,22 @@ export function AiTestPanel() {
 
             <div className="grid gap-2">
               <Label htmlFor="ai-tone">Tone</Label>
-              <Input
-                id="ai-tone"
+              <Select
                 value={tone}
-                onChange={(event) => setTone(event.target.value)}
-                className="h-11"
+                onValueChange={(value) => setTone(value as PostTone)}
                 disabled={isGeneratingText || isGeneratingImage}
-              />
+              >
+                <SelectTrigger id="ai-tone" className="h-11 w-full">
+                  <SelectValue placeholder="Select tone" />
+                </SelectTrigger>
+                <SelectContent>
+                  {POST_TONES.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option.charAt(0).toUpperCase() + option.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

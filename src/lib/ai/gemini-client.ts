@@ -1,6 +1,12 @@
 import { GoogleGenerativeAI, type GenerativeModel } from "@google/generative-ai";
 
+import type { PostGoal } from "@/lib/validation/ai";
+import { POST_GOAL_LABELS } from "@/lib/validation/ai";
+import type { PostTone } from "@/lib/validation/posts";
 import type { SocialPlatform } from "@/models/SocialAccount";
+
+export const DEFAULT_SYSTEM_PROMPT =
+  "You are the content assistant inside PostForge AI, writing social posts on behalf of a professional user. Always write in clear, natural human language — no corporate filler, no excessive emoji, no hashtag spam (max 3-5 relevant hashtags only if the platform benefits from them). Match the requested tone exactly. Never fabricate statistics, quotes, or claims the user didn't provide. Keep sentences scannable on mobile.";
 
 const KEY_ENV_NAMES = [
   "GEMINI_API_KEY_1",
@@ -37,9 +43,12 @@ const PLATFORM_LABELS: Record<SocialPlatform, string> = {
 let currentKeyIndex = 0;
 
 type GenerateTextInput = {
-  prompt: string;
   platform: SocialPlatform;
-  tone: string;
+  topic?: string;
+  goal?: PostGoal;
+  keyPoints?: string;
+  tone: PostTone;
+  customPrompt?: string;
 };
 
 type GenerateImageInput = {
@@ -171,18 +180,75 @@ export function getImageModel(apiKey?: string): GenerativeModel {
 
 function buildTextSystemInstruction(
   platform: SocialPlatform,
-  tone: string,
+  tone: PostTone,
 ): string {
   const limit = PLATFORM_CHAR_LIMITS[platform];
   const platformLabel = PLATFORM_LABELS[platform];
 
   return [
-    `You are PostForge AI, a social media copywriter.`,
+    DEFAULT_SYSTEM_PROMPT,
     `Write a single ${platformLabel} post in a ${tone} tone.`,
     `Stay within ${limit} characters including spaces and hashtags.`,
     `Return only the post text with no markdown fences, labels, or commentary.`,
     `Do not exceed the ${platformLabel} character limit under any circumstance.`,
-  ].join(" ");
+  ].join("\n\n");
+}
+
+function buildStructuredGenerationRequest({
+  topic,
+  goal,
+  keyPoints,
+  tone,
+  platform,
+}: Required<
+  Pick<GenerateTextInput, "topic" | "goal" | "tone" | "platform">
+> &
+  Pick<GenerateTextInput, "keyPoints">): string {
+  const limit = PLATFORM_CHAR_LIMITS[platform];
+  const platformLabel = PLATFORM_LABELS[platform];
+  const goalLabel = POST_GOAL_LABELS[goal];
+  const keyPointLines = keyPoints
+    ?.split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const sections = [
+    `Create a ${platformLabel} post about: ${topic}`,
+    `Goal: ${goalLabel}`,
+    `Tone: ${tone}`,
+  ];
+
+  if (keyPointLines?.length) {
+    sections.push(
+      "Key points to include (one per line):",
+      ...keyPointLines.map((line) => `- ${line}`),
+    );
+  }
+
+  sections.push(
+    `Keep the post within ${limit} characters including spaces and hashtags.`,
+    "Return only the final post text.",
+  );
+
+  return sections.join("\n\n");
+}
+
+function buildGenerationPrompt(input: GenerateTextInput): string {
+  if (input.customPrompt?.trim()) {
+    return input.customPrompt.trim();
+  }
+
+  if (!input.topic || !input.goal) {
+    throw new Error("Topic and goal are required when customPrompt is not provided.");
+  }
+
+  return buildStructuredGenerationRequest({
+    topic: input.topic,
+    goal: input.goal,
+    keyPoints: input.keyPoints,
+    tone: input.tone,
+    platform: input.platform,
+  });
 }
 
 function extractGeneratedText(result: Awaited<
@@ -211,16 +277,14 @@ function extractGeneratedImageBuffer(result: Awaited<
   throw new Error("Gemini returned no image data.");
 }
 
-export async function generateText({
-  prompt,
-  platform,
-  tone,
-}: GenerateTextInput): Promise<string> {
+export async function generateText(input: GenerateTextInput): Promise<string> {
+  const prompt = buildGenerationPrompt(input);
+
   return generateWithRotation(async (apiKey) => {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
       model: getGeminiModelName(),
-      systemInstruction: buildTextSystemInstruction(platform, tone),
+      systemInstruction: buildTextSystemInstruction(input.platform, input.tone),
     });
     const result = await model.generateContent(prompt);
 
