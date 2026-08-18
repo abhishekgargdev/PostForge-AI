@@ -1,5 +1,7 @@
 import mongoose, { Schema, model, models, type Model } from "mongoose";
 
+import { SOCIAL_PLATFORMS, type SocialPlatform } from "@/models/SocialAccount";
+
 export const POST_STATUSES = [
   "draft",
   "scheduled",
@@ -13,6 +15,7 @@ export interface IPost {
   userId: mongoose.Types.ObjectId;
   content: string;
   aiPrompt?: string;
+  platforms: SocialPlatform[];
   status: PostStatus;
   scheduledAt?: Date;
   publishedAt?: Date;
@@ -32,6 +35,11 @@ const postSchema = new Schema<IPost>(
     },
     content: { type: String, required: true },
     aiPrompt: { type: String },
+    platforms: {
+      type: [String],
+      enum: SOCIAL_PLATFORMS,
+      default: [],
+    },
     status: {
       type: String,
       enum: POST_STATUSES,
