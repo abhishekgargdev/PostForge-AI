@@ -42,7 +42,7 @@ function getLinkedInConfig() {
 
 export function buildLinkedInAuthorizationUrl(input: {
   state: string;
-  codeChallenge: string;
+  codeChallenge?: string;
 }) {
   const { clientId, redirectUri } = getLinkedInConfig();
   const params = new URLSearchParams({
@@ -51,8 +51,6 @@ export function buildLinkedInAuthorizationUrl(input: {
     redirect_uri: redirectUri,
     state: input.state,
     scope: LINKEDIN_SCOPES.join(" "),
-    code_challenge: input.codeChallenge,
-    code_challenge_method: "S256",
   });
 
   return `https://www.linkedin.com/oauth/v2/authorization?${params.toString()}`;
@@ -60,7 +58,7 @@ export function buildLinkedInAuthorizationUrl(input: {
 
 export async function exchangeLinkedInCode(input: {
   code: string;
-  codeVerifier: string;
+  codeVerifier?: string;
 }) {
   const { clientId, clientSecret, redirectUri } = getLinkedInConfig();
 
@@ -70,7 +68,6 @@ export async function exchangeLinkedInCode(input: {
     redirect_uri: redirectUri,
     client_id: clientId,
     client_secret: clientSecret,
-    code_verifier: input.codeVerifier,
   });
 
   const response = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
