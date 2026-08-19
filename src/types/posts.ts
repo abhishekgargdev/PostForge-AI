@@ -1,5 +1,6 @@
 export const POST_STATUSES = [
   "draft",
+  "confirmed",
   "scheduled",
   "publishing",
   "published",

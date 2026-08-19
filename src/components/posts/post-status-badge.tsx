@@ -4,6 +4,7 @@ import {
   CheckCircle2Icon,
   FilePenLineIcon,
   LoaderCircleIcon,
+  InboxIcon,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,11 @@ const statusConfig: Record<
     label: "Draft",
     icon: FilePenLineIcon,
     className: "border-neutral-200 bg-neutral-100 text-neutral-700",
+  },
+  confirmed: {
+    label: "Confirmed",
+    icon: InboxIcon,
+    className: "border-teal-200 bg-teal-50 text-teal-700",
   },
   scheduled: {
     label: "Scheduled",

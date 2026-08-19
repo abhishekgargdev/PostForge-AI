@@ -32,6 +32,7 @@ export type AnalyticsOverview = {
     scheduled: number;
     publishedThisWeek: number;
     drafts: number;
+    confirmed: number;
   };
   platformMetrics: PlatformMetrics[];
   publishedByDay: PublishedDayPoint[];
@@ -135,6 +136,7 @@ export async function getAnalyticsOverview(
     scheduled,
     publishedThisWeek,
     drafts,
+    confirmed,
     recentPostsRaw,
     platformRows,
     dailyRows,
@@ -147,6 +149,7 @@ export async function getAnalyticsOverview(
       publishedAt: { $gte: weekStart },
     }),
     Post.countDocuments({ userId: userObjectId, status: "draft" }),
+    Post.countDocuments({ userId: userObjectId, status: "confirmed" }),
     Post.find({ userId: userObjectId })
       .sort({ updatedAt: -1 })
       .limit(5)
@@ -185,6 +188,7 @@ export async function getAnalyticsOverview(
       scheduled,
       publishedThisWeek,
       drafts,
+      confirmed,
     },
     platformMetrics: buildPlatformMetrics(platformRows),
     publishedByDay: buildPublishedByDay(dailyRows, chartStart, chartEnd),

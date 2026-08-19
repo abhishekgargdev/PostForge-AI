@@ -1019,6 +1019,22 @@ export function PostCreationWizard() {
             </Button>
             <Button
               type="button"
+              variant="outline"
+              className="h-11 flex-1"
+              disabled={isBusy}
+              onClick={() => void savePost("confirmed")}
+            >
+              {isSaving ? (
+                <>
+                  <Loader size="sm" label="Confirming post" />
+                  Saving...
+                </>
+              ) : (
+                "Confirm & Queue"
+              )}
+            </Button>
+            <Button
+              type="button"
               variant="secondary"
               className="h-11 flex-1"
               disabled={isBusy}
@@ -1028,7 +1044,7 @@ export function PostCreationWizard() {
             </Button>
             <Button
               type="button"
-              className="h-11 flex-1"
+              className="h-11 flex-1 bg-gradient-forge text-white"
               disabled={isBusy}
               onClick={() => void handlePublishNow()}
             >

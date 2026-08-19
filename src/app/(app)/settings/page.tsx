@@ -5,6 +5,7 @@ import {
   LayoutTemplateIcon,
   Link2Icon,
   SettingsIcon,
+  HelpCircleIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,12 @@ const moreLinks = [
     description: "Set default topics and tones for each day of the week.",
     href: "/settings/content-calendar",
     icon: CalendarDaysIcon,
+  },
+  {
+    title: "Questions List",
+    description: "Configure questions related to posts for daily AI suggestions.",
+    href: "/settings/questions",
+    icon: HelpCircleIcon,
   },
   {
     title: "Analytics",

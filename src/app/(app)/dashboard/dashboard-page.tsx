@@ -8,6 +8,7 @@ import {
   CheckCircle2Icon,
   FileTextIcon,
   SparklesIcon,
+  InboxIcon,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
@@ -17,6 +18,7 @@ import type { AnalyticsOverview } from "@/lib/analytics/overview";
 import { formatPlatformLabel } from "@/lib/posts/serialize";
 import { PostStatusBadge } from "@/components/posts/post-status-badge";
 import { PublishedPostsChart } from "@/components/dashboard/published-posts-chart";
+import { DailyQuestionWidget } from "@/components/dashboard/daily-question-widget";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +38,12 @@ const statCards = [
     title: "Total Posts",
     icon: SparklesIcon,
     tint: "bg-forge/10 text-forge",
+  },
+  {
+    key: "confirmed" as const,
+    title: "Confirmed Queue",
+    icon: InboxIcon,
+    tint: "bg-teal-50 text-teal-700",
   },
   {
     key: "scheduled" as const,
@@ -150,7 +158,7 @@ export function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {statCards.map((card) => (
           <StatCard
             key={card.key}
@@ -162,6 +170,8 @@ export function DashboardPage() {
           />
         ))}
       </div>
+
+      <DailyQuestionWidget onPostCreated={fetchOverview} />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <Card className="xl:col-span-2" size="sm">
