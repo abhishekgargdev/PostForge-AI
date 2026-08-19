@@ -16,7 +16,6 @@ export type DayPreferenceResponse = {
 export function toDayPreferenceResponse(
   preference: Pick<
     IDayPreference,
-    | "_id"
     | "dayOfWeek"
     | "topic"
     | "goal"
