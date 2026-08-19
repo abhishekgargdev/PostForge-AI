@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
-import { Sparkles, HelpCircle, Check, ArrowRight, Image as ImageIcon, RotateCw, Trash } from "lucide-react";
+import { Sparkles, HelpCircle, Check, ArrowRight, Image as ImageIcon, RotateCw, Trash, BookOpen } from "lucide-react";
 
 import { apiClient } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ import type { AccountSummary } from "@/lib/accounts/serialize";
 import type { MediaResponse } from "@/lib/media/serialize";
 import { SparkBurst } from "@/components/ui/spark-burst";
 
-type QuestionResponse = {
+type TopicResponse = {
   id: string;
   text: string;
   isActive: boolean;
@@ -33,13 +33,13 @@ type GenerateTextResponse = {
   content: string;
 };
 
-export function DailyQuestionWidget({ onPostCreated }: { onPostCreated: () => void }) {
-  const [questions, setQuestions] = useState<QuestionResponse[]>([]);
-  const [activeQuestionIndex, setActiveQuestionIndex] = useState<number>(-1);
+export function DailyTopicWidget({ onPostCreated }: { onPostCreated: () => void }) {
+  const [topics, setTopics] = useState<TopicResponse[]>([]);
+  const [activeTopicIndex, setActiveTopicIndex] = useState<number>(-1);
   const [connectedPlatforms, setConnectedPlatforms] = useState<SocialPlatform[]>([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState<SocialPlatform[]>([]);
   
-  const [answer, setAnswer] = useState("");
+  const [context, setContext] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   
   const [isGenerating, setIsGenerating] = useState(false);
@@ -55,15 +55,15 @@ export function DailyQuestionWidget({ onPostCreated }: { onPostCreated: () => vo
   const loadWidgetData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [allQuestions, accounts] = await Promise.all([
-        apiClient<QuestionResponse[]>("/api/questions"),
+      const [allTopics, accounts] = await Promise.all([
+        apiClient<TopicResponse[]>("/api/topics"),
         apiClient<AccountSummary[]>("/api/accounts"),
       ]);
 
-      const activeQ = allQuestions.filter((q) => q.isActive);
-      setQuestions(activeQ);
-      if (activeQ.length > 0) {
-        setActiveQuestionIndex(0);
+      const activeT = allTopics.filter((t) => t.isActive);
+      setTopics(activeT);
+      if (activeT.length > 0) {
+        setActiveTopicIndex(0);
       }
 
       const connected = accounts
@@ -75,7 +75,7 @@ export function DailyQuestionWidget({ onPostCreated }: { onPostCreated: () => vo
         setActiveTab(connected[0]);
       }
     } catch (error) {
-      toast.error("Unable to load daily question widget");
+      toast.error("Unable to load daily topic widget");
     } finally {
       setIsLoading(false);
     }
@@ -85,10 +85,10 @@ export function DailyQuestionWidget({ onPostCreated }: { onPostCreated: () => vo
     void loadWidgetData();
   }, [loadWidgetData]);
 
-  const handleNextQuestion = () => {
-    if (questions.length === 0) return;
-    setActiveQuestionIndex((prev) => (prev + 1) % questions.length);
-    setAnswer("");
+  const handleNextTopic = () => {
+    if (topics.length === 0) return;
+    setActiveTopicIndex((prev) => (prev + 1) % topics.length);
+    setContext("");
     setGeneratedDrafts({});
     setImageUrl("");
     setMediaLibraryId("");
@@ -107,22 +107,21 @@ export function DailyQuestionWidget({ onPostCreated }: { onPostCreated: () => vo
       toast.error("Please select at least one social platform.");
       return;
     }
-    if (!answer.trim()) {
-      toast.error("Please provide an answer to generate a post.");
-      return;
-    }
 
     setIsGenerating(true);
     setGeneratedDrafts({});
     setImageUrl("");
     setMediaLibraryId("");
 
-    const currentQuestion = questions[activeQuestionIndex];
+    const currentTopic = topics[activeTopicIndex];
 
     try {
       // 1. Generate text for each selected platform
       const textPromises = selectedPlatforms.map(async (platform) => {
-        const promptText = `Question: ${currentQuestion.text}\nAnswer: ${answer.trim()}`;
+        const promptText = context.trim()
+          ? `Topic: ${currentTopic.text}\nUser context: ${context.trim()}`
+          : `Topic to address: ${currentTopic.text}. Write a professional, insightful post discussing this topic.`;
+
         const data = await apiClient<GenerateTextResponse>("/api/ai/generate-text", {
           method: "POST",
           body: JSON.stringify({
@@ -142,7 +141,7 @@ export function DailyQuestionWidget({ onPostCreated }: { onPostCreated: () => vo
 
       // 2. Generate matching image
       setIsGeneratingImage(true);
-      const imgPrompt = `A high quality, modern, conceptual vector illustration representing: ${answer.trim()}`;
+      const imgPrompt = `A high quality, professional, conceptual modern vector graphic representing: ${context.trim() || currentTopic.text}`;
       const imgRes = await apiClient<MediaResponse>("/api/ai/generate-image", {
         method: "POST",
         body: JSON.stringify({ prompt: imgPrompt }),
@@ -168,13 +167,13 @@ export function DailyQuestionWidget({ onPostCreated }: { onPostCreated: () => vo
         .map((p) => generatedDrafts[p])
         .find(Boolean) || "";
 
-      const currentQuestion = questions[activeQuestionIndex];
+      const currentTopic = topics[activeTopicIndex];
 
       await apiClient("/api/posts", {
         method: "POST",
         body: JSON.stringify({
           content: primaryContent,
-          aiPrompt: `Daily Question: ${currentQuestion.text} | Answer: ${answer}`,
+          aiPrompt: `Daily Topic: ${currentTopic.text}${context ? ` | Context: ${context}` : ""}`,
           platforms: selectedPlatforms,
           platformContent: generatedDrafts,
           imageUrl: imageUrl || undefined,
@@ -184,7 +183,7 @@ export function DailyQuestionWidget({ onPostCreated }: { onPostCreated: () => vo
       });
 
       toast.success("Post confirmed and added to daily queue!");
-      setAnswer("");
+      setContext("");
       setGeneratedDrafts({});
       setImageUrl("");
       setMediaLibraryId("");
@@ -203,13 +202,13 @@ export function DailyQuestionWidget({ onPostCreated }: { onPostCreated: () => vo
         .map((p) => generatedDrafts[p])
         .find(Boolean) || "";
 
-      const currentQuestion = questions[activeQuestionIndex];
+      const currentTopic = topics[activeTopicIndex];
 
       const post = await apiClient<{ id: string }>("/api/posts", {
         method: "POST",
         body: JSON.stringify({
           content: primaryContent,
-          aiPrompt: `Daily Question: ${currentQuestion.text} | Answer: ${answer}`,
+          aiPrompt: `Daily Topic: ${currentTopic.text}${context ? ` | Context: ${context}` : ""}`,
           platforms: selectedPlatforms,
           platformContent: generatedDrafts,
           imageUrl: imageUrl || undefined,
@@ -220,7 +219,7 @@ export function DailyQuestionWidget({ onPostCreated }: { onPostCreated: () => vo
 
       await apiClient(`/api/posts/${post.id}/publish`, { method: "POST" });
       toast.success("Post published instantly!");
-      setAnswer("");
+      setContext("");
       setGeneratedDrafts({});
       setImageUrl("");
       setMediaLibraryId("");
@@ -243,54 +242,58 @@ export function DailyQuestionWidget({ onPostCreated }: { onPostCreated: () => vo
     return <SectionSkeleton rows={2} rowClassName="h-32 rounded-xl" />;
   }
 
-  if (questions.length === 0) {
-    return null; // Don't show anything if no questions are active
+  if (topics.length === 0) {
+    return null; // Don't show anything if no topics are active
   }
 
-  const currentQuestion = questions[activeQuestionIndex];
+  const currentTopic = topics[activeTopicIndex];
   const hasDrafts = Object.keys(generatedDrafts).length > 0;
 
   return (
-    <Card className="relative overflow-hidden border-forge/30 ring-1 ring-forge/10">
+    <Card className="relative overflow-hidden border-forge/30 ring-1 ring-forge/20">
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2 text-forge">
           <Sparkles className="size-5 animate-pulse" />
-          <span className="text-xs font-semibold uppercase tracking-wider">Daily Prompter</span>
+          <span className="text-xs font-semibold uppercase tracking-wider">Daily Topic Prompter</span>
         </div>
-        <CardTitle className="text-xl">Answer today&apos;s question to forge a post</CardTitle>
+        <CardTitle className="text-xl">Forge posts from your active topics</CardTitle>
         <CardDescription>
-          Your input + AI will create ready-to-publish social posts with generated visuals.
+          Generate native copies and conceptual graphics for your channels from your configured subjects.
         </CardDescription>
       </CardHeader>
       
       <CardContent className="space-y-4">
-        {/* Question Panel */}
+        {/* Topic Panel */}
         <div className="rounded-2xl bg-forge/5 border border-forge/10 p-5 space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
               <span className="text-[10px] font-semibold text-forge uppercase tracking-widest bg-forge/10 px-2 py-0.5 rounded">
-                Question {activeQuestionIndex + 1} of {questions.length}
+                Topic {activeTopicIndex + 1} of {topics.length}
               </span>
-              <p className="text-lg font-semibold text-ink leading-snug">{currentQuestion.text}</p>
+              <p className="text-lg font-semibold text-ink leading-snug">{currentTopic.text}</p>
             </div>
-            {questions.length > 1 && (
+            {topics.length > 1 && (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 className="h-9 shrink-0 text-xs border-forge/20 text-forge hover:bg-forge/5"
-                onClick={handleNextQuestion}
+                onClick={handleNextTopic}
               >
-                Skip Question
+                Skip Topic
               </Button>
             )}
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="daily-context" className="text-xs text-neutral-500 font-medium">
+              Optional: Add specific instructions, points, or news context (Leave blank for full AI generation)
+            </Label>
             <Textarea
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              placeholder="Type your thoughts, raw facts, or answers here..."
+              id="daily-context"
+              value={context}
+              onChange={(e) => setContext(e.target.value)}
+              placeholder="e.g. focus on Gemini Flash advantages, or write about a specific DSA Binary Search problem..."
               rows={3}
               className="bg-white border-neutral-200"
               disabled={isGenerating || isSaving || isPublishing}
@@ -328,7 +331,7 @@ export function DailyQuestionWidget({ onPostCreated }: { onPostCreated: () => vo
           <div className="flex justify-end pt-2">
             <Button
               type="button"
-              disabled={isGenerating || isSaving || isPublishing || !answer.trim()}
+              disabled={isGenerating || isSaving || isPublishing}
               onClick={handleGenerate}
               className="bg-gradient-forge text-white px-6 shadow-md shadow-forge/15"
             >
@@ -418,7 +421,7 @@ export function DailyQuestionWidget({ onPostCreated }: { onPostCreated: () => vo
                   setGeneratedDrafts({});
                   setImageUrl("");
                   setMediaLibraryId("");
-                  setAnswer("");
+                  setContext("");
                 }}
                 disabled={isSaving || isPublishing}
               >

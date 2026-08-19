@@ -1,6 +1,6 @@
 import mongoose, { Schema, model, models, type Model } from "mongoose";
 
-export interface IQuestion {
+export interface ITopic {
   userId: mongoose.Types.ObjectId;
   text: string;
   isActive: boolean;
@@ -8,7 +8,7 @@ export interface IQuestion {
   updatedAt: Date;
 }
 
-const questionSchema = new Schema<IQuestion>(
+const topicSchema = new Schema<ITopic>(
   {
     userId: {
       type: Schema.Types.ObjectId,
@@ -22,8 +22,8 @@ const questionSchema = new Schema<IQuestion>(
   { timestamps: true },
 );
 
-const Question =
-  (models.Question as Model<IQuestion>) ||
-  model<IQuestion>("Question", questionSchema);
+const Topic =
+  (models.Topic as Model<ITopic>) ||
+  model<ITopic>("Topic", topicSchema);
 
-export default Question;
+export default Topic;

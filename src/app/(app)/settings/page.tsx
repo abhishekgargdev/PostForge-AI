@@ -31,9 +31,9 @@ const moreLinks = [
     icon: CalendarDaysIcon,
   },
   {
-    title: "Questions List",
-    description: "Configure questions related to posts for daily AI suggestions.",
-    href: "/settings/questions",
+    title: "Topic List",
+    description: "Configure topics and news categories for daily AI auto-generation.",
+    href: "/settings/topics",
     icon: HelpCircleIcon,
   },
   {

@@ -3,10 +3,10 @@ import { z } from "zod";
 
 import { isAuthError, requireAuth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
-import Question from "@/models/Question";
+import Topic from "@/models/Topic";
 
-const updateQuestionSchema = z.object({
-  text: z.string().trim().min(1, "Question text is required").optional(),
+const updateTopicSchema = z.object({
+  text: z.string().trim().min(1, "Topic text is required").optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -20,7 +20,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     const { id } = await context.params;
 
     const body = await request.json();
-    const parsed = updateQuestionSchema.safeParse(body);
+    const parsed = updateTopicSchema.safeParse(body);
 
     if (!parsed.success) {
       return NextResponse.json(
@@ -37,17 +37,17 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     await connectDB();
 
-    const question = await Question.findOneAndUpdate(
+    const topic = await Topic.findOneAndUpdate(
       { _id: id, userId: user.id },
       { $set: parsed.data },
       { new: true },
     );
 
-    if (!question) {
+    if (!topic) {
       return NextResponse.json(
         {
           success: false,
-          error: { message: "Question not found", code: "NOT_FOUND" },
+          error: { message: "Topic not found", code: "NOT_FOUND" },
         },
         { status: 404 },
       );
@@ -56,11 +56,11 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     return NextResponse.json({
       success: true,
       data: {
-        id: question._id.toString(),
-        text: question.text,
-        isActive: question.isActive,
-        createdAt: question.createdAt.toISOString(),
-        updatedAt: question.updatedAt.toISOString(),
+        id: topic._id.toString(),
+        text: topic.text,
+        isActive: topic.isActive,
+        createdAt: topic.createdAt.toISOString(),
+        updatedAt: topic.updatedAt.toISOString(),
       },
     });
   } catch (error) {
@@ -69,12 +69,12 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     }
 
     const message =
-      error instanceof Error ? error.message : "Unable to update question";
+      error instanceof Error ? error.message : "Unable to update topic";
 
     return NextResponse.json(
       {
         success: false,
-        error: { message, code: "UPDATE_QUESTION_FAILED" },
+        error: { message, code: "UPDATE_TOPIC_FAILED" },
       },
       { status: 500 },
     );
@@ -88,13 +88,13 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     await connectDB();
 
-    const question = await Question.findOneAndDelete({ _id: id, userId: user.id });
+    const topic = await Topic.findOneAndDelete({ _id: id, userId: user.id });
 
-    if (!question) {
+    if (!topic) {
       return NextResponse.json(
         {
           success: false,
-          error: { message: "Question not found", code: "NOT_FOUND" },
+          error: { message: "Topic not found", code: "NOT_FOUND" },
         },
         { status: 404 },
       );
@@ -102,7 +102,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({
       success: true,
-      message: "Question deleted successfully",
+      message: "Topic deleted successfully",
     });
   } catch (error) {
     if (isAuthError(error)) {
@@ -110,12 +110,12 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     }
 
     const message =
-      error instanceof Error ? error.message : "Unable to delete question";
+      error instanceof Error ? error.message : "Unable to delete topic";
 
     return NextResponse.json(
       {
         success: false,
-        error: { message, code: "DELETE_QUESTION_FAILED" },
+        error: { message, code: "DELETE_TOPIC_FAILED" },
       },
       { status: 500 },
     );

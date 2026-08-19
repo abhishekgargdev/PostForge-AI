@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Edit2, Sparkles, HelpCircle } from "lucide-react";
+import { Plus, Trash2, Edit2, Sparkles, BookOpen } from "lucide-react";
 
 import { apiClient } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ import { Loader, SectionSkeleton } from "@/components/ui/loaders";
 import { Switch } from "@/components/ui/switch";
 import { EmptyState } from "@/components/ui/empty-state";
 
-type QuestionResponse = {
+type TopicResponse = {
   id: string;
   text: string;
   isActive: boolean;
@@ -36,24 +36,24 @@ type QuestionResponse = {
   updatedAt: string;
 };
 
-export function QuestionsSettings() {
-  const [questions, setQuestions] = useState<QuestionResponse[]>([]);
+export function TopicsSettings() {
+  const [topics, setTopics] = useState<TopicResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"add" | "edit">("add");
-  const [editingQuestion, setEditingQuestion] = useState<QuestionResponse | null>(null);
-  const [questionText, setQuestionText] = useState("");
+  const [editingTopic, setEditingTopic] = useState<TopicResponse | null>(null);
+  const [topicText, setTopicText] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  const fetchQuestions = useCallback(async () => {
+  const fetchTopics = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await apiClient<QuestionResponse[]>("/api/questions");
-      setQuestions(res);
+      const res = await apiClient<TopicResponse[]>("/api/topics");
+      setTopics(res);
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Unable to load questions",
+        error instanceof Error ? error.message : "Unable to load topics",
       );
     } finally {
       setIsLoading(false);
@@ -61,73 +61,73 @@ export function QuestionsSettings() {
   }, []);
 
   useEffect(() => {
-    void fetchQuestions();
-  }, [fetchQuestions]);
+    void fetchTopics();
+  }, [fetchTopics]);
 
   function openAddDialog() {
     setDialogMode("add");
-    setEditingQuestion(null);
-    setQuestionText("");
+    setEditingTopic(null);
+    setTopicText("");
     setIsActive(true);
     setIsDialogOpen(true);
   }
 
-  function openEditDialog(q: QuestionResponse) {
+  function openEditDialog(t: TopicResponse) {
     setDialogMode("edit");
-    setEditingQuestion(q);
-    setQuestionText(q.text);
-    setIsActive(q.isActive);
+    setEditingTopic(t);
+    setTopicText(t.text);
+    setIsActive(t.isActive);
     setIsDialogOpen(true);
   }
 
   async function handleSave() {
-    if (!questionText.trim()) {
-      toast.error("Question text is required.");
+    if (!topicText.trim()) {
+      toast.error("Topic text is required.");
       return;
     }
 
     setIsSaving(true);
     try {
       if (dialogMode === "add") {
-        const newQ = await apiClient<QuestionResponse>("/api/questions", {
+        const newTopic = await apiClient<TopicResponse>("/api/topics", {
           method: "POST",
-          body: JSON.stringify({ text: questionText.trim(), isActive }),
+          body: JSON.stringify({ text: topicText.trim(), isActive }),
         });
-        setQuestions((prev) => [newQ, ...prev]);
-        toast.success("Question added successfully");
-      } else if (dialogMode === "edit" && editingQuestion) {
-        const updatedQ = await apiClient<QuestionResponse>(
-          `/api/questions/${editingQuestion.id}`,
+        setTopics((prev) => [newTopic, ...prev]);
+        toast.success("Topic added successfully");
+      } else if (dialogMode === "edit" && editingTopic) {
+        const updatedTopic = await apiClient<TopicResponse>(
+          `/api/topics/${editingTopic.id}`,
           {
             method: "PUT",
-            body: JSON.stringify({ text: questionText.trim(), isActive }),
+            body: JSON.stringify({ text: topicText.trim(), isActive }),
           },
         );
-        setQuestions((prev) =>
-          prev.map((q) => (q.id === updatedQ.id ? updatedQ : q)),
+        setTopics((prev) =>
+          prev.map((t) => (t.id === updatedTopic.id ? updatedTopic : t)),
         );
-        toast.success("Question updated successfully");
+        toast.success("Topic updated successfully");
       }
       setIsDialogOpen(false);
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Unable to save question",
+        error instanceof Error ? error.message : "Unable to save topic",
       );
     } finally {
       setIsSaving(false);
     }
   }
 
-  async function handleToggleActive(q: QuestionResponse, checked: boolean) {
+  async function handleToggleActive(t: TopicResponse, checked: boolean) {
     try {
-      const updatedQ = await apiClient<QuestionResponse>(`/api/questions/${q.id}`, {
+      const updatedTopic = await apiClient<TopicResponse>(`/api/topics/${t.id}`, {
         method: "PUT",
         body: JSON.stringify({ isActive: checked }),
       });
-      setQuestions((prev) =>
-        prev.map((item) => (item.id === updatedQ.id ? updatedQ : item)),
+      setTopics((prev) =>
+        prev.map((item) => (item.id === updatedTopic.id ? updatedTopic : item)),
       );
-      toast.success(checked ? "Question activated" : "Question paused");
+      toast.success(checked ? "Topic activated" : "Topic paused");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Unable to toggle status",
@@ -136,17 +136,17 @@ export function QuestionsSettings() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Are you sure you want to delete this question?")) {
+    if (!confirm("Are you sure you want to delete this topic?")) {
       return;
     }
 
     try {
-      await apiClient(`/api/questions/${id}`, { method: "DELETE" });
-      setQuestions((prev) => prev.filter((q) => q.id !== id));
-      toast.success("Question deleted");
+      await apiClient(`/api/topics/${id}`, { method: "DELETE" });
+      setTopics((prev) => prev.filter((t) => t.id !== id));
+      toast.success("Topic deleted");
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Unable to delete question",
+        error instanceof Error ? error.message : "Unable to delete topic",
       );
     }
   }
@@ -164,9 +164,9 @@ export function QuestionsSettings() {
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Questions List</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Topic List</h1>
           <p className="text-sm text-muted-foreground">
-            Configure questions that you want PostForge AI to ask you. Daily AI drafts and prompts will be based on these active questions.
+            Configure topics (e.g. *Trending technologies*, *DSA based questions*, *Tips & Tricks*) that you want PostForge AI to base daily drafts and suggestions on.
           </p>
         </div>
         <Button
@@ -175,41 +175,41 @@ export function QuestionsSettings() {
           className="h-11 bg-gradient-forge text-white"
         >
           <Plus className="mr-2 size-4" />
-          Add Question
+          Add Topic
         </Button>
       </div>
 
-      {questions.length === 0 ? (
+      {topics.length === 0 ? (
         <EmptyState
-          icon={HelpCircle}
-          title="No questions added yet"
-          description="Create questions related to your posts so PostForge can ask you them daily and forge perfect content."
+          icon={BookOpen}
+          title="No topics added yet"
+          description="Create topic ideas so PostForge can automatically generate professional copy and custom AI visuals for them daily."
           action={
             <Button type="button" onClick={openAddDialog} className="h-11">
-              Add your first question
+              Add your first topic
             </Button>
           }
         />
       ) : (
         <div className="grid grid-cols-1 gap-4">
-          {questions.map((q) => (
-            <Card key={q.id} size="sm" className="transition-all hover:shadow-sm">
+          {topics.map((t) => (
+            <Card key={t.id} size="sm" className="transition-all hover:shadow-sm">
               <CardContent className="flex items-center justify-between gap-4 p-5">
                 <div className="min-w-0 flex-1 space-y-1.5">
-                  <p className="text-base font-medium text-ink">{q.text}</p>
+                  <p className="text-base font-medium text-ink">{t.text}</p>
                   <p className="text-xs text-muted-foreground">
-                    Status: {q.isActive ? "Active (Used for daily prompt generation)" : "Paused"}
+                    Status: {t.isActive ? "Active (Used for daily auto-generations)" : "Paused"}
                   </p>
                 </div>
                 <div className="flex items-center gap-4 shrink-0">
                   <div className="flex items-center gap-2">
-                    <Label htmlFor={`active-${q.id}`} className="text-xs text-muted-foreground">
+                    <Label htmlFor={`active-${t.id}`} className="text-xs text-muted-foreground">
                       Active
                     </Label>
                     <Switch
-                      id={`active-${q.id}`}
-                      checked={q.isActive}
-                      onCheckedChange={(checked) => void handleToggleActive(q, checked)}
+                      id={`active-${t.id}`}
+                      checked={t.isActive}
+                      onCheckedChange={(checked) => void handleToggleActive(t, checked)}
                     />
                   </div>
                   <Button
@@ -217,7 +217,7 @@ export function QuestionsSettings() {
                     variant="ghost"
                     size="sm"
                     className="h-9 w-9 p-0"
-                    onClick={() => openEditDialog(q)}
+                    onClick={() => openEditDialog(t)}
                   >
                     <Edit2 className="size-4 text-neutral-500" />
                   </Button>
@@ -226,7 +226,7 @@ export function QuestionsSettings() {
                     variant="ghost"
                     size="sm"
                     className="h-9 w-9 p-0 hover:bg-red-50 hover:text-red-600"
-                    onClick={() => void handleDelete(q.id)}
+                    onClick={() => void handleDelete(t.id)}
                   >
                     <Trash2 className="size-4" />
                   </Button>
@@ -250,21 +250,21 @@ export function QuestionsSettings() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {dialogMode === "add" ? "Add New Question" : "Edit Question"}
+              {dialogMode === "add" ? "Add New Topic" : "Edit Topic"}
             </DialogTitle>
             <DialogDescription>
-              Write a question related to your industry, daily work, or insights to help generate posts.
+              Specify a topic category, news theme, or specific subject for your daily post drafts.
             </DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-col gap-4 py-2">
             <div className="grid gap-2">
-              <Label htmlFor="question-text">Question Text</Label>
+              <Label htmlFor="topic-text">Topic Title / Theme</Label>
               <Input
-                id="question-text"
-                value={questionText}
-                onChange={(e) => setQuestionText(e.target.value)}
-                placeholder="What is your top productivity tip for this week?"
+                id="topic-text"
+                value={topicText}
+                onChange={(e) => setTopicText(e.target.value)}
+                placeholder="e.g. Trending technologies, DSA based questions, Productivity tips"
                 className="h-11"
                 disabled={isSaving}
               />
@@ -272,13 +272,13 @@ export function QuestionsSettings() {
 
             <div className="flex items-center justify-between gap-4 rounded-xl border p-4">
               <div className="space-y-0.5">
-                <Label htmlFor="q-active">Active</Label>
+                <Label htmlFor="t-active">Active</Label>
                 <p className="text-xs text-muted-foreground">
-                  Include this question in the pool of daily prompt suggestions.
+                  Include this topic in the pool for daily AI auto-generation.
                 </p>
               </div>
               <Switch
-                id="q-active"
+                id="t-active"
                 checked={isActive}
                 onCheckedChange={setIsActive}
                 disabled={isSaving}
@@ -304,7 +304,7 @@ export function QuestionsSettings() {
             >
               {isSaving ? (
                 <>
-                  <Loader size="sm" label="Saving question" />
+                  <Loader size="sm" label="Saving topic" />
                   Saving...
                 </>
               ) : (

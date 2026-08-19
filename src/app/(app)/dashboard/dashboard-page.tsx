@@ -18,7 +18,7 @@ import type { AnalyticsOverview } from "@/lib/analytics/overview";
 import { formatPlatformLabel } from "@/lib/posts/serialize";
 import { PostStatusBadge } from "@/components/posts/post-status-badge";
 import { PublishedPostsChart } from "@/components/dashboard/published-posts-chart";
-import { DailyQuestionWidget } from "@/components/dashboard/daily-question-widget";
+import { DailyTopicWidget } from "@/components/dashboard/daily-topic-widget";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -171,7 +171,7 @@ export function DashboardPage() {
         ))}
       </div>
 
-      <DailyQuestionWidget onPostCreated={fetchOverview} />
+      <DailyTopicWidget onPostCreated={fetchOverview} />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <Card className="xl:col-span-2" size="sm">

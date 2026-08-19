@@ -3,10 +3,10 @@ import { z } from "zod";
 
 import { isAuthError, requireAuth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
-import Question from "@/models/Question";
+import Topic from "@/models/Topic";
 
-const createQuestionSchema = z.object({
-  text: z.string().trim().min(1, "Question text is required"),
+const createTopicSchema = z.object({
+  text: z.string().trim().min(1, "Topic text is required"),
   isActive: z.boolean().default(true),
 });
 
@@ -15,18 +15,18 @@ export async function GET(request: NextRequest) {
     const user = await requireAuth(request);
     await connectDB();
 
-    const questions = await Question.find({ userId: user.id })
+    const topics = await Topic.find({ userId: user.id })
       .sort({ createdAt: -1 })
       .lean();
 
     return NextResponse.json({
       success: true,
-      data: questions.map((q) => ({
-        id: q._id.toString(),
-        text: q.text,
-        isActive: q.isActive,
-        createdAt: q.createdAt.toISOString(),
-        updatedAt: q.updatedAt.toISOString(),
+      data: topics.map((t) => ({
+        id: t._id.toString(),
+        text: t.text,
+        isActive: t.isActive,
+        createdAt: t.createdAt.toISOString(),
+        updatedAt: t.updatedAt.toISOString(),
       })),
     });
   } catch (error) {
@@ -35,12 +35,12 @@ export async function GET(request: NextRequest) {
     }
 
     const message =
-      error instanceof Error ? error.message : "Unable to fetch questions";
+      error instanceof Error ? error.message : "Unable to fetch topics";
 
     return NextResponse.json(
       {
         success: false,
-        error: { message, code: "LIST_QUESTIONS_FAILED" },
+        error: { message, code: "LIST_TOPICS_FAILED" },
       },
       { status: 500 },
     );
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth(request);
     const body = await request.json();
-    const parsed = createQuestionSchema.safeParse(body);
+    const parsed = createTopicSchema.safeParse(body);
 
     if (!parsed.success) {
       return NextResponse.json(
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
 
-    const question = await Question.create({
+    const topic = await Topic.create({
       userId: user.id,
       text: parsed.data.text,
       isActive: parsed.data.isActive,
@@ -78,11 +78,11 @@ export async function POST(request: NextRequest) {
       {
         success: true,
         data: {
-          id: question._id.toString(),
-          text: question.text,
-          isActive: question.isActive,
-          createdAt: question.createdAt.toISOString(),
-          updatedAt: question.updatedAt.toISOString(),
+          id: topic._id.toString(),
+          text: topic.text,
+          isActive: topic.isActive,
+          createdAt: topic.createdAt.toISOString(),
+          updatedAt: topic.updatedAt.toISOString(),
         },
       },
       { status: 201 },
@@ -93,12 +93,12 @@ export async function POST(request: NextRequest) {
     }
 
     const message =
-      error instanceof Error ? error.message : "Unable to create question";
+      error instanceof Error ? error.message : "Unable to create topic";
 
     return NextResponse.json(
       {
         success: false,
-        error: { message, code: "CREATE_QUESTION_FAILED" },
+        error: { message, code: "CREATE_TOPIC_FAILED" },
       },
       { status: 500 },
     );
