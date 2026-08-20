@@ -86,8 +86,8 @@ export const updatePostSchema = z
 
 export const listPostsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(50).default(10),
-  status: z.enum([...POST_STATUSES, "all"]).default("all"),
+  limit: z.coerce.number().int().min(1).max(500).default(10),
+  status: z.string().default("all"),
 });
 
 export function parseScheduledAt(value: string | Date | undefined) {

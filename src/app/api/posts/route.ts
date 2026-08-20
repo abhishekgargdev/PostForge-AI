@@ -14,6 +14,7 @@ import {
 import { connectDB } from "@/lib/db";
 import { ensurePostPlatformsForPost } from "@/lib/publishing/ensure-post-platforms";
 import Post from "@/models/Post";
+import PostPlatform from "@/models/PostPlatform";
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,8 +38,12 @@ export async function GET(request: NextRequest) {
 
     const { page, limit, status } = query.data;
     const filter: Record<string, unknown> = { userId: user.id };
+    let sortOptions: Record<string, 1 | -1> = { updatedAt: -1 };
 
-    if (status !== "all") {
+    if (status === "queue") {
+      filter.status = { $in: ["scheduled", "publishing", "failed"] };
+      sortOptions = { scheduledAt: 1 };
+    } else if (status !== "all") {
       filter.status = status;
     }
 
@@ -47,7 +52,7 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
     const [posts, total] = await Promise.all([
       Post.find(filter)
-        .sort({ updatedAt: -1 })
+        .sort(sortOptions)
         .skip(skip)
         .limit(limit)
         .lean<
@@ -58,8 +63,27 @@ export async function GET(request: NextRequest) {
       Post.countDocuments(filter),
     ]);
 
-    const data: PaginatedPostsResponse = {
-      posts: posts.map(toPostResponse),
+    const postIds = posts.map((p) => p._id);
+    const platformsData = await PostPlatform.find({ postId: { $in: postIds } }).lean();
+
+    const postsWithPlatforms = posts.map((p) => {
+      const resp = toPostResponse(p);
+      const details = platformsData
+        .filter((pp) => pp.postId.toString() === p._id.toString())
+        .map((pp) => ({
+          platform: pp.platform,
+          status: pp.status,
+          errorMessage: pp.errorMessage,
+          retryCount: pp.retryCount,
+        }));
+      return {
+        ...resp,
+        platformsDetail: details,
+      };
+    });
+
+    const data = {
+      posts: postsWithPlatforms,
       pagination: {
         page,
         limit,

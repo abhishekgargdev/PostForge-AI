@@ -5,6 +5,8 @@ import {
   MoreHorizontal,
   PlusCircle,
   Calendar,
+  CalendarDays,
+  Inbox,
   Wand2,
   type LucideIcon,
 } from "lucide-react";
@@ -36,6 +38,16 @@ export const appNavItems: AppNavItem[] = [
     label: "Studio",
     href: "/studio",
     icon: Wand2,
+  },
+  {
+    label: "Queue",
+    href: "/queue",
+    icon: Inbox,
+  },
+  {
+    label: "Calendar",
+    href: "/calendar",
+    icon: CalendarDays,
   },
   {
     label: "Create",

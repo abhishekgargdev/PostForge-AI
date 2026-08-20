@@ -19,6 +19,7 @@ import { formatPlatformLabel } from "@/lib/posts/serialize";
 import { PostStatusBadge } from "@/components/posts/post-status-badge";
 import { PublishedPostsChart } from "@/components/dashboard/published-posts-chart";
 import { DailyTopicWidget } from "@/components/dashboard/daily-topic-widget";
+import { DailyDraftConfirmation } from "@/components/dashboard/daily-draft-confirmation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -170,6 +171,8 @@ export function DashboardPage() {
           />
         ))}
       </div>
+
+      <DailyDraftConfirmation onActionComplete={fetchOverview} />
 
       <DailyTopicWidget onPostCreated={fetchOverview} />
 

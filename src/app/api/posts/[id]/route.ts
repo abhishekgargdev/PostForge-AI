@@ -11,6 +11,7 @@ import {
   updatePostSchema,
 } from "@/lib/validation/posts";
 import Post from "@/models/Post";
+import PostPlatform from "@/models/PostPlatform";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -140,6 +141,16 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     if (post.status === "scheduled") {
       await ensurePostPlatformsForPost(post);
+      await PostPlatform.updateMany(
+        { postId: post._id },
+        {
+          $set: {
+            status: "pending",
+            retryCount: 0,
+            errorMessage: undefined,
+          },
+        }
+      );
     }
 
     return NextResponse.json({

@@ -66,24 +66,55 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const rawText = parsed.data.text;
+    const splitTexts = rawText
+      .split(/[,\n]/)
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+
+    if (splitTexts.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { message: "No valid topics provided", code: "VALIDATION_ERROR" },
+        },
+        { status: 400 },
+      );
+    }
+
+    // Deduplicate case-insensitively
+    const uniqueTexts: string[] = [];
+    const lowercasedSet = new Set<string>();
+    for (const text of splitTexts) {
+      const lower = text.toLowerCase();
+      if (!lowercasedSet.has(lower)) {
+        lowercasedSet.add(lower);
+        uniqueTexts.push(text);
+      }
+    }
+
     await connectDB();
 
-    const topic = await Topic.create({
-      userId: user.id,
-      text: parsed.data.text,
-      isActive: parsed.data.isActive,
-    });
+    const createdTopics = [];
+    for (const textVal of uniqueTexts) {
+      const topic = await Topic.create({
+        userId: user.id,
+        text: textVal,
+        isActive: parsed.data.isActive,
+      });
+      createdTopics.push({
+        id: topic._id.toString(),
+        text: topic.text,
+        isActive: topic.isActive,
+        createdAt: topic.createdAt.toISOString(),
+        updatedAt: topic.updatedAt.toISOString(),
+      });
+    }
 
     return NextResponse.json(
       {
         success: true,
-        data: {
-          id: topic._id.toString(),
-          text: topic.text,
-          isActive: topic.isActive,
-          createdAt: topic.createdAt.toISOString(),
-          updatedAt: topic.updatedAt.toISOString(),
-        },
+        data: createdTopics,
       },
       { status: 201 },
     );

@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Loader, SectionSkeleton } from "@/components/ui/loaders";
 import { Switch } from "@/components/ui/switch";
@@ -89,12 +90,12 @@ export function TopicsSettings() {
     setIsSaving(true);
     try {
       if (dialogMode === "add") {
-        const newTopic = await apiClient<TopicResponse>("/api/topics", {
+        const newTopics = await apiClient<TopicResponse[]>("/api/topics", {
           method: "POST",
           body: JSON.stringify({ text: topicText.trim(), isActive }),
         });
-        setTopics((prev) => [newTopic, ...prev]);
-        toast.success("Topic added successfully");
+        setTopics((prev) => [...newTopics, ...prev]);
+        toast.success(`${newTopics.length} topic(s) added successfully`);
       } else if (dialogMode === "edit" && editingTopic) {
         const updatedTopic = await apiClient<TopicResponse>(
           `/api/topics/${editingTopic.id}`,
@@ -259,15 +260,28 @@ export function TopicsSettings() {
 
           <div className="flex flex-col gap-4 py-2">
             <div className="grid gap-2">
-              <Label htmlFor="topic-text">Topic Title / Theme</Label>
-              <Input
-                id="topic-text"
-                value={topicText}
-                onChange={(e) => setTopicText(e.target.value)}
-                placeholder="e.g. Trending technologies, DSA based questions, Productivity tips"
-                className="h-11"
-                disabled={isSaving}
-              />
+              <Label htmlFor="topic-text">
+                {dialogMode === "add" ? "Topic Titles / Themes (separate with commas or newlines)" : "Topic Title / Theme"}
+              </Label>
+              {dialogMode === "add" ? (
+                <Textarea
+                  id="topic-text"
+                  value={topicText}
+                  onChange={(e) => setTopicText(e.target.value)}
+                  placeholder="e.g. Trending technologies, DSA based questions&#10;Productivity tips, Cloud Computing"
+                  rows={4}
+                  disabled={isSaving}
+                />
+              ) : (
+                <Input
+                  id="topic-text"
+                  value={topicText}
+                  onChange={(e) => setTopicText(e.target.value)}
+                  placeholder="e.g. Trending technologies"
+                  className="h-11"
+                  disabled={isSaving}
+                />
+              )}
             </div>
 
             <div className="flex items-center justify-between gap-4 rounded-xl border p-4">
