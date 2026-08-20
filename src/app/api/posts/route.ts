@@ -63,8 +63,8 @@ export async function GET(request: NextRequest) {
       Post.countDocuments(filter),
     ]);
 
-    const postIds = posts.map((p) => p._id);
-    const platformsData = await PostPlatform.find({ postId: { $in: postIds } }).lean();
+    const postIds = posts.map((p) => p._id.toString());
+    const platformsData = await PostPlatform.find({ postId: { $in: postIds } as any }).lean();
 
     const postsWithPlatforms = posts.map((p) => {
       const resp = toPostResponse(p);

@@ -311,7 +311,7 @@ export default function QueuePage() {
                       )}
                     </td>
                     <td className="p-4">
-                      <PostStatusBadge status={post.status} />
+                      <PostStatusBadge status={post.status as any} />
                     </td>
                     <td className="p-4 pr-6 text-right">
                       <div className="flex justify-end gap-2">
@@ -373,7 +373,7 @@ export default function QueuePage() {
                     <p className="text-xs text-neutral-400">
                       Created {format(new Date(post.createdAt), "MMM d, yyyy")}
                     </p>
-                    <PostStatusBadge status={post.status} />
+                    <PostStatusBadge status={post.status as any} />
                   </div>
                   <div className="flex gap-1.5">
                     {post.status === "failed" && (
@@ -465,7 +465,7 @@ export default function QueuePage() {
 
       {/* Edit Content Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Post Commentary</DialogTitle>
             <DialogDescription>Modify the copy description directly before it is published.</DialogDescription>
@@ -492,7 +492,7 @@ export default function QueuePage() {
 
       {/* Reschedule Date/Time Dialog */}
       <Dialog open={isRescheduleOpen} onOpenChange={setIsRescheduleOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Reschedule Publication</DialogTitle>
             <DialogDescription>Choose a new date and time for publication.</DialogDescription>
@@ -521,7 +521,7 @@ export default function QueuePage() {
 
       {/* Remove from Queue Confirmation Dialog */}
       <Dialog open={isCancelOpen} onOpenChange={setIsCancelOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-rose-600">
               <AlertTriangle className="size-5" />

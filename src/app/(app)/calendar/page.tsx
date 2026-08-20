@@ -41,6 +41,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader, SectionSkeleton } from "@/components/ui/loaders";
+import { EmptyState } from "@/components/ui/empty-state";
 import { PostStatusBadge } from "@/components/posts/post-status-badge";
 import { formatPlatformLabel } from "@/lib/posts/serialize";
 
@@ -382,7 +383,7 @@ export default function CalendarPage() {
                         ))}
                       </div>
                     </div>
-                    <PostStatusBadge status={post.status} />
+                    <PostStatusBadge status={post.status as any} />
                   </button>
                 ))}
               </CardContent>
@@ -393,11 +394,11 @@ export default function CalendarPage() {
 
       {/* Post Detail dialog */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between gap-4">
               <span>Post Details</span>
-              {selectedPost && <PostStatusBadge status={selectedPost.status} />}
+              {selectedPost && <PostStatusBadge status={selectedPost.status as any} />}
             </DialogTitle>
             <DialogDescription>
               {selectedPost?.scheduledAt && (
@@ -472,7 +473,7 @@ export default function CalendarPage() {
 
       {/* Edit commentary dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Commentary</DialogTitle>
           </DialogHeader>
@@ -498,7 +499,7 @@ export default function CalendarPage() {
 
       {/* Reschedule Date/Time Dialog */}
       <Dialog open={isRescheduleOpen} onOpenChange={setIsRescheduleOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Reschedule Publication</DialogTitle>
           </DialogHeader>
@@ -526,7 +527,7 @@ export default function CalendarPage() {
 
       {/* Cancel post confirmation dialog */}
       <Dialog open={isCancelOpen} onOpenChange={setIsCancelOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-rose-600">
               <AlertTriangle className="size-5" />
