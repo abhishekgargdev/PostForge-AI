@@ -1,6 +1,6 @@
 import { connectDB } from "@/lib/db";
 import { decryptToken } from "@/lib/crypto/tokens";
-import { publishLinkedInPost } from "@/lib/oauth/linkedin";
+import { publishLinkedInPost } from "@/lib/social/linkedin";
 import { ensurePostPlatformsForPost } from "@/lib/publishing/ensure-post-platforms";
 import {
   createPublishFailureNotification,
@@ -30,10 +30,9 @@ export type PublishPlatformResult = {
 };
 
 type PublishContext = {
+  post: IPost;
   postPlatform: IPostPlatform;
   socialAccount: ISocialAccount;
-  content: string;
-  imageUrl?: string;
 };
 
 type PlatformPublishSuccess = {
@@ -54,14 +53,20 @@ async function publishToLinkedIn(
     throw new Error("LinkedIn simulated account cannot publish to the real API.");
   }
 
-  const accessToken = decryptToken(context.socialAccount.accessToken);
-
-  return publishLinkedInPost({
-    accessToken,
-    platformUserId: context.socialAccount.platformUserId,
-    content: context.content,
-    imageUrl: context.imageUrl,
+  const result = await publishLinkedInPost({
+    post: context.post,
+    postPlatform: context.postPlatform,
+    socialAccount: context.socialAccount,
   });
+
+  if (!result.success) {
+    throw new Error(result.message);
+  }
+
+  return {
+    platformPostId: result.platformPostId,
+    platformUrl: result.platformUrl,
+  };
 }
 
 async function publishToTwitter(
@@ -93,36 +98,95 @@ const platformPublishers: Record<
   facebook: publishToFacebook,
 };
 
+async function runWithConcurrencyLimit<T>(
+  limit: number,
+  items: T[],
+  fn: (item: T) => Promise<void>
+): Promise<void> {
+  const executing = new Set<Promise<void>>();
+  for (const item of items) {
+    const p = Promise.resolve().then(() => fn(item));
+    executing.add(p);
+    const clean = () => executing.delete(p);
+    p.then(clean, clean);
+    if (executing.size >= limit) {
+      await Promise.race(executing);
+    }
+  }
+  await Promise.all(executing);
+}
+
 export async function publishPostToPlatform(
   postPlatformId: string,
 ): Promise<PublishPlatformResult> {
   await connectDB();
 
-  const postPlatform = await PostPlatform.findById(postPlatformId);
-  if (!postPlatform) {
+  const initialPlatform = await PostPlatform.findById(postPlatformId);
+  if (!initialPlatform) {
     throw new Error("PostPlatform not found.");
+  }
+
+  if (initialPlatform.platformPostId) {
+    return {
+      success: true,
+      postPlatformId,
+      platform: initialPlatform.platform,
+      platformUrl: initialPlatform.platformUrl,
+    };
+  }
+
+  // Atomically claim this platform
+  const postPlatform = await PostPlatform.findOneAndUpdate(
+    {
+      _id: postPlatformId,
+      status: { $in: ["pending", "failed", "publishing"] },
+    },
+    {
+      $set: {
+        status: "publishing",
+      },
+    },
+    { new: true }
+  );
+
+  if (!postPlatform) {
+    return {
+      success: false,
+      postPlatformId,
+      platform: initialPlatform.platform,
+      errorMessage: "PostPlatform already claimed or completed by another process.",
+    };
   }
 
   const [post, socialAccount] = await Promise.all([
     Post.findById(postPlatform.postId),
-    SocialAccount.findById(postPlatform.socialAccountId),
+    SocialAccount.findById(socialAccountIdToUse(postPlatform)),
   ]);
 
+  function socialAccountIdToUse(p: IPostPlatform) {
+    return p.socialAccountId;
+  }
+
   if (!post) {
+    postPlatform.status = "failed";
+    postPlatform.errorMessage = "Parent post not found.";
+    await postPlatform.save();
     throw new Error("Post not found.");
   }
 
   if (!socialAccount) {
+    postPlatform.status = "failed";
+    postPlatform.errorMessage = "Social account not found.";
+    await postPlatform.save();
     throw new Error("Social account not found.");
   }
 
   try {
     const publisher = platformPublishers[postPlatform.platform];
     const result = await publisher({
+      post,
       postPlatform,
       socialAccount,
-      content: postPlatform.adaptedContent,
-      imageUrl: post.imageUrl,
     });
 
     postPlatform.status = "published";
@@ -159,7 +223,17 @@ export async function publishPostToPlatformWithRetry(
   postPlatformId: string,
   options: { incrementRetryOnFailure?: boolean; notifyOnMaxRetries?: boolean } = {},
 ) {
+  // Update lastPublishAttemptAt before attempting
+  await PostPlatform.findByIdAndUpdate(postPlatformId, {
+    $set: { lastPublishAttemptAt: new Date() },
+  });
+
   const result = await publishPostToPlatform(postPlatformId);
+
+  // If another run already claimed it, return early without retry updates
+  if (result.errorMessage?.includes("already claimed")) {
+    return result;
+  }
 
   if (result.success || !options.incrementRetryOnFailure) {
     return result;
@@ -188,7 +262,8 @@ export async function publishPostToPlatformWithRetry(
       }
     }
   } else {
-    postPlatform.status = "pending";
+    // Keep as failed so sync rollup knows retry is pending
+    postPlatform.status = "failed";
     await postPlatform.save();
   }
 
@@ -224,6 +299,7 @@ export type ScheduledPublishSummary = {
 };
 
 export async function processDueScheduledPosts(): Promise<ScheduledPublishSummary> {
+  const startTime = new Date();
   await connectDB();
 
   const now = new Date();
@@ -241,6 +317,11 @@ export async function processDueScheduledPosts(): Promise<ScheduledPublishSummar
     platformFailures: 0,
   };
 
+  let numberClaimed = 0;
+  let numberSkipped = 0;
+
+  const platformsToProcess: { postPlatformId: string; parentPostId: string }[] = [];
+
   for (const post of duePosts) {
     const claimedPost = await Post.findOneAndUpdate(
       { _id: post._id, status: "scheduled" },
@@ -249,9 +330,11 @@ export async function processDueScheduledPosts(): Promise<ScheduledPublishSummar
     );
 
     if (!claimedPost) {
+      numberSkipped += 1;
       continue;
     }
 
+    numberClaimed += 1;
     summary.processedPosts += 1;
 
     await ensurePostPlatformsForPost(claimedPost);
@@ -260,52 +343,83 @@ export async function processDueScheduledPosts(): Promise<ScheduledPublishSummar
       postId: post._id,
       $or: [
         { status: "pending" },
+        { status: "publishing" },
         { status: "failed", retryCount: { $lt: MAX_PUBLISH_RETRIES } },
       ],
     });
 
-    for (const postPlatform of retryablePlatforms) {
+    for (const pp of retryablePlatforms) {
+      platformsToProcess.push({
+        postPlatformId: pp._id.toString(),
+        parentPostId: post._id.toString(),
+      });
+    }
+  }
+
+  const parentPostIdsToSync = new Set<string>();
+
+  await runWithConcurrencyLimit(3, platformsToProcess, async (item) => {
+    try {
       summary.platformAttempts += 1;
+      parentPostIdsToSync.add(item.parentPostId);
+
       const result = await publishPostToPlatformWithRetry(
-        postPlatform._id.toString(),
+        item.postPlatformId,
         {
           incrementRetryOnFailure: true,
           notifyOnMaxRetries: true,
-        },
+        }
       );
 
       if (result.success) {
         summary.platformSuccesses += 1;
       } else {
-        summary.platformFailures += 1;
+        if (!result.errorMessage?.includes("already claimed")) {
+          summary.platformFailures += 1;
+        }
       }
+    } catch (err) {
+      console.error(`Error processing scheduled post platform ${item.postPlatformId}:`, err);
+      summary.platformFailures += 1;
     }
+  });
 
-    const updatedPost = await syncPostStatusFromPlatforms(post._id.toString());
-
-    if (updatedPost?.status === "published") {
-      summary.publishedPosts += 1;
-      await createPublishSuccessNotification({
-        userId: post.userId.toString(),
-        postId: post._id.toString(),
-        contentPreview: post.content,
-      });
-    } else if (updatedPost?.status === "failed") {
-      summary.failedPosts += 1;
+  for (const parentPostId of parentPostIdsToSync) {
+    try {
+      const updatedPost = await syncPostStatusFromPlatforms(parentPostId);
+      if (updatedPost?.status === "published") {
+        summary.publishedPosts += 1;
+        const postDoc = await Post.findById(parentPostId);
+        if (postDoc) {
+          await createPublishSuccessNotification({
+            userId: postDoc.userId.toString(),
+            postId: postDoc._id.toString(),
+            contentPreview: postDoc.content,
+          });
+        }
+      } else if (updatedPost?.status === "failed") {
+        summary.failedPosts += 1;
+      }
+    } catch (syncErr) {
+      console.error(`Error syncing post status for scheduled post ${parentPostId}:`, syncErr);
     }
   }
+
+  const finishedTime = new Date();
+  console.log(`[CRON RUN] executionStartedAt: ${startTime.toISOString()}, executionFinishedAt: ${finishedTime.toISOString()}, numberFound: ${duePosts.length}, numberClaimed: ${numberClaimed}, numberSkipped: ${numberSkipped}, numberPublished: ${summary.platformSuccesses}, numberFailed: ${summary.platformFailures}`);
 
   return summary;
 }
 
 export async function processConfirmedQueue(): Promise<ScheduledPublishSummary> {
+  const startTime = new Date();
   await connectDB();
 
   const confirmedPosts = await Post.find({
     status: "confirmed",
   })
     .sort({ createdAt: 1 })
-    .limit(2);
+    .limit(5);
 
   const summary: ScheduledPublishSummary = {
     processedPosts: 0,
@@ -316,6 +430,11 @@ export async function processConfirmedQueue(): Promise<ScheduledPublishSummary> 
     platformFailures: 0,
   };
 
+  let numberClaimed = 0;
+  let numberSkipped = 0;
+
+  const platformsToProcess: { postPlatformId: string; parentPostId: string }[] = [];
+
   for (const post of confirmedPosts) {
     const claimedPost = await Post.findOneAndUpdate(
       { _id: post._id, status: "confirmed" },
@@ -324,9 +443,11 @@ export async function processConfirmedQueue(): Promise<ScheduledPublishSummary> 
     );
 
     if (!claimedPost) {
+      numberSkipped += 1;
       continue;
     }
 
+    numberClaimed += 1;
     summary.processedPosts += 1;
 
     await ensurePostPlatformsForPost(claimedPost);
@@ -335,40 +456,70 @@ export async function processConfirmedQueue(): Promise<ScheduledPublishSummary> 
       postId: post._id,
       $or: [
         { status: "pending" },
+        { status: "publishing" },
         { status: "failed", retryCount: { $lt: MAX_PUBLISH_RETRIES } },
       ],
     });
 
-    for (const postPlatform of retryablePlatforms) {
+    for (const pp of retryablePlatforms) {
+      platformsToProcess.push({
+        postPlatformId: pp._id.toString(),
+        parentPostId: post._id.toString(),
+      });
+    }
+  }
+
+  const parentPostIdsToSync = new Set<string>();
+
+  await runWithConcurrencyLimit(3, platformsToProcess, async (item) => {
+    try {
       summary.platformAttempts += 1;
+      parentPostIdsToSync.add(item.parentPostId);
+
       const result = await publishPostToPlatformWithRetry(
-        postPlatform._id.toString(),
+        item.postPlatformId,
         {
           incrementRetryOnFailure: true,
           notifyOnMaxRetries: true,
-        },
+        }
       );
 
       if (result.success) {
         summary.platformSuccesses += 1;
       } else {
-        summary.platformFailures += 1;
+        if (!result.errorMessage?.includes("already claimed")) {
+          summary.platformFailures += 1;
+        }
       }
+    } catch (err) {
+      console.error(`Error processing confirmed post platform ${item.postPlatformId}:`, err);
+      summary.platformFailures += 1;
     }
+  });
 
-    const updatedPost = await syncPostStatusFromPlatforms(post._id.toString());
-
-    if (updatedPost?.status === "published") {
-      summary.publishedPosts += 1;
-      await createPublishSuccessNotification({
-        userId: post.userId.toString(),
-        postId: post._id.toString(),
-        contentPreview: post.content,
-      });
-    } else if (updatedPost?.status === "failed") {
-      summary.failedPosts += 1;
+  for (const parentPostId of parentPostIdsToSync) {
+    try {
+      const updatedPost = await syncPostStatusFromPlatforms(parentPostId);
+      if (updatedPost?.status === "published") {
+        summary.publishedPosts += 1;
+        const postDoc = await Post.findById(parentPostId);
+        if (postDoc) {
+          await createPublishSuccessNotification({
+            userId: postDoc.userId.toString(),
+            postId: postDoc._id.toString(),
+            contentPreview: postDoc.content,
+          });
+        }
+      } else if (updatedPost?.status === "failed") {
+        summary.failedPosts += 1;
+      }
+    } catch (syncErr) {
+      console.error(`Error syncing post status for confirmed post ${parentPostId}:`, syncErr);
     }
   }
+
+  const finishedTime = new Date();
+  console.log(`[CRON QUEUE RUN] executionStartedAt: ${startTime.toISOString()}, executionFinishedAt: ${finishedTime.toISOString()}, numberFound: ${confirmedPosts.length}, numberClaimed: ${numberClaimed}, numberSkipped: ${numberSkipped}, numberPublished: ${summary.platformSuccesses}, numberFailed: ${summary.platformFailures}`);
 
   return summary;
 }

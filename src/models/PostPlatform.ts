@@ -5,6 +5,7 @@ import { SOCIAL_PLATFORMS, type SocialPlatform } from "@/models/SocialAccount";
 export const POST_PLATFORM_STATUSES = [
   "pending",
   "scheduled",
+  "publishing",
   "published",
   "failed",
 ] as const;
@@ -21,6 +22,7 @@ export interface IPostPlatform {
   errorMessage?: string;
   retryCount: number;
   publishedAt?: Date;
+  lastPublishAttemptAt?: Date;
 }
 
 const postPlatformSchema = new Schema<IPostPlatform>(
@@ -54,6 +56,7 @@ const postPlatformSchema = new Schema<IPostPlatform>(
     errorMessage: { type: String },
     retryCount: { type: Number, required: true, default: 0 },
     publishedAt: { type: Date },
+    lastPublishAttemptAt: { type: Date },
   },
   { timestamps: true },
 );

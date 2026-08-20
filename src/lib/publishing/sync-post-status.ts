@@ -14,23 +14,24 @@ export async function syncPostStatusFromPlatforms(postId: string) {
   }
 
   const allPublished = platforms.every((item) => item.status === "published");
-  const allFailed = platforms.every((item) => item.status === "failed");
-  const hasPending = platforms.some((item) => item.status === "pending");
+  const allFailed = platforms.every((item) => item.status === "failed" && item.retryCount >= 3);
+  const hasRetryable = platforms.some(
+    (item) =>
+      item.status === "pending" ||
+      item.status === "publishing" ||
+      (item.status === "failed" && item.retryCount < 3)
+  );
 
   if (allPublished) {
     post.status = "published";
     post.publishedAt = post.publishedAt ?? new Date();
   } else if (allFailed) {
     post.status = "failed";
-  } else if (hasPending) {
-    if (post.status !== "scheduled") {
-      post.status = "publishing";
-    }
-  } else if (platforms.some((item) => item.status === "published")) {
+  } else if (hasRetryable) {
+    post.status = "scheduled";
+  } else {
     post.status = "published";
     post.publishedAt = post.publishedAt ?? new Date();
-  } else {
-    post.status = "failed";
   }
 
   await post.save();
@@ -47,6 +48,10 @@ export async function getPendingPostPlatforms(postId: string) {
 export async function getRetryablePostPlatforms(postId: string) {
   return PostPlatform.find({
     postId,
-    $or: [{ status: "pending" }, { status: "failed", retryCount: { $lt: 3 } }],
+    $or: [
+      { status: "pending" },
+      { status: "publishing" },
+      { status: "failed", retryCount: { $lt: 3 } },
+    ],
   });
 }
