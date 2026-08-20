@@ -5,6 +5,7 @@ import {
   MoreHorizontal,
   PlusCircle,
   Calendar,
+  Wand2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -30,6 +31,11 @@ export const appNavItems: AppNavItem[] = [
     label: "Planner",
     href: "/planner",
     icon: Calendar,
+  },
+  {
+    label: "Studio",
+    href: "/studio",
+    icon: Wand2,
   },
   {
     label: "Create",
@@ -63,6 +69,10 @@ export function isNavItemActive(pathname: string, href: string): boolean {
 
   if (href === "/planner") {
     return pathname === "/planner" || pathname.startsWith("/planner/");
+  }
+
+  if (href === "/studio") {
+    return pathname === "/studio" || pathname.startsWith("/studio/");
   }
 
   if (href === "/settings") {
