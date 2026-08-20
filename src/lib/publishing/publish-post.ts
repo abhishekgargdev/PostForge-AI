@@ -9,7 +9,7 @@ import {
 import {
   syncPostStatusFromPlatforms,
 } from "@/lib/publishing/sync-post-status";
-import Post from "@/models/Post";
+import Post, { type IPost } from "@/models/Post";
 import PostPlatform, { type IPostPlatform } from "@/models/PostPlatform";
 import SocialAccount, { type ISocialAccount } from "@/models/SocialAccount";
 import type { SocialPlatform } from "@/models/SocialAccount";

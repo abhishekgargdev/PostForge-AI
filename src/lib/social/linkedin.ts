@@ -80,9 +80,9 @@ async function uploadImageToLinkedIn(
 }
 
 export async function publishLinkedInPost(params: {
-  post: IPost;
-  postPlatform: IPostPlatform;
-  socialAccount: ISocialAccount;
+  post: any;
+  postPlatform: any;
+  socialAccount: any;
 }): Promise<LinkedInPublishResult> {
   const { post, postPlatform, socialAccount } = params;
 
