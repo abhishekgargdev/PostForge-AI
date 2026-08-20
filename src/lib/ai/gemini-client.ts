@@ -23,7 +23,7 @@ export const KEY_POOL = KEY_ENV_NAMES.map((name) => process.env[name]?.trim()).f
   (key): key is string => Boolean(key),
 );
 
-function getGeminiModelName(): string {
+export function getGeminiModelName(): string {
   return process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
 }
 

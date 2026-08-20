@@ -487,6 +487,7 @@ export function PostCreationWizard() {
           status,
           scheduledAt: options?.scheduledAt,
           timezone: userTimezone,
+          imageStatus: imageUrl ? "success" : "none",
         }),
       });
 
@@ -523,6 +524,7 @@ export function PostCreationWizard() {
           imageUrl: imageUrl || undefined,
           mediaLibraryId: mediaLibraryId || undefined,
           status: "draft",
+          imageStatus: imageUrl ? "success" : "none",
         }),
       });
 

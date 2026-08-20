@@ -53,3 +53,43 @@ export const generateTextSchema = z
   });
 
 export type GenerateTextInput = z.infer<typeof generateTextSchema>;
+
+export const STYLES = [
+  "Professional",
+  "Educational",
+  "Conversational",
+  "Thought Leadership",
+  "News Analysis",
+] as const;
+
+export type CampaignStyle = (typeof STYLES)[number];
+
+export const FORMATS = [
+  "Auto Select",
+  "Breaking News",
+  "Explainer",
+  "Top 5",
+  "Comparison",
+  "Opinion",
+  "Prediction",
+  "Case Study",
+  "Did You Know",
+  "Beginner Guide",
+  "Developer Tips",
+  "Lessons Learned",
+  "Myth vs Reality",
+] as const;
+
+export type CampaignFormat = (typeof FORMATS)[number];
+
+export const AUDIENCES = [
+  "Auto",
+  "Developers",
+  "Software Engineers",
+  "Tech Professionals",
+  "Business Leaders",
+  "Startup Founders",
+  "General Tech",
+] as const;
+
+export type CampaignAudience = (typeof AUDIENCES)[number];

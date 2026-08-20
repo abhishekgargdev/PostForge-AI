@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import mongoose from "mongoose";
 import { isAuthError, requireAuth } from "@/lib/auth";
 import {
   PaginatedPostsResponse,
@@ -116,8 +117,10 @@ export async function POST(request: NextRequest) {
       content: parsed.data.content,
       aiPrompt: parsed.data.aiPrompt,
       platforms: parsed.data.platforms,
-      imageUrl: parsed.data.imageUrl,
-      mediaLibraryId: parsed.data.mediaLibraryId,
+      imageUrl: parsed.data.imageUrl || undefined,
+      mediaLibraryId: parsed.data.mediaLibraryId
+        ? new mongoose.Types.ObjectId(parsed.data.mediaLibraryId)
+        : undefined,
       status: parsed.data.status,
       scheduledAt,
       publishedAt,

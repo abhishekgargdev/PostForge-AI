@@ -4,40 +4,7 @@ import { z } from "zod";
 import { generateCampaignBatch } from "@/lib/ai/content-planner";
 import { isAuthError, requireAuth } from "@/lib/auth";
 import { SOCIAL_PLATFORMS } from "@/types/platforms";
-
-export const STYLES = [
-  "Professional",
-  "Educational",
-  "Conversational",
-  "Thought Leadership",
-  "News Analysis",
-] as const;
-
-export const FORMATS = [
-  "Auto Select",
-  "Breaking News",
-  "Explainer",
-  "Top 5",
-  "Comparison",
-  "Opinion",
-  "Prediction",
-  "Case Study",
-  "Did You Know",
-  "Beginner Guide",
-  "Developer Tips",
-  "Lessons Learned",
-  "Myth vs Reality",
-] as const;
-
-export const AUDIENCES = [
-  "Auto",
-  "Developers",
-  "Software Engineers",
-  "Tech Professionals",
-  "Business Leaders",
-  "Startup Founders",
-  "General Tech",
-] as const;
+import { STYLES, FORMATS, AUDIENCES } from "@/lib/validation/ai";
 
 const generateBatchSchema = z.object({
   topics: z.array(z.string().trim().min(1)).min(1, "At least one topic is required"),
@@ -51,7 +18,7 @@ const generateBatchSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAuth(request);
+    const user = await requireAuth(request);
     const body = await request.json();
     const parsed = generateBatchSchema.safeParse(body);
 

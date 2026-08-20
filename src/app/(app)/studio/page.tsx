@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { format, addDays } from "date-fns";
+import { format, addDays, isWeekend } from "date-fns";
 import {
   Sparkles,
   Check,
@@ -52,7 +52,7 @@ import { formatPlatformLabel, type PostResponse } from "@/lib/posts/serialize";
 import { PlatformChip } from "@/components/posts/platform-chip";
 import type { AccountSummary } from "@/lib/accounts/serialize";
 import type { MediaResponse } from "@/lib/media/serialize";
-import { STYLES, FORMATS, AUDIENCES } from "@/app/api/ai/generate-batch/route";
+import { STYLES, FORMATS, AUDIENCES } from "@/lib/validation/ai";
 import type { PostGoal } from "@/lib/validation/ai";
 import type { PostTone } from "@/lib/validation/posts";
 
@@ -72,7 +72,48 @@ type GeneratedPost = {
   mediaLibraryId?: string;
   isGeneratingImage: boolean;
   imageStatus: "pending" | "success" | "failed" | "none";
+  isTimeCustomized: boolean;
 };
+
+function addWeekdays(startDate: Date, daysToAdd: number): Date {
+  let date = new Date(startDate);
+  let count = 0;
+  while (count < daysToAdd) {
+    date = addDays(date, 1);
+    if (!isWeekend(date)) {
+      count++;
+    }
+  }
+  return date;
+}
+
+function calculateScheduledTime(
+  start: Date,
+  index: number,
+  intervalType: string,
+  customDays: number
+): Date {
+  let date = new Date(start);
+  if (index === 0) {
+    if (intervalType === "every_weekday" && isWeekend(date)) {
+      while (isWeekend(date)) {
+        date = addDays(date, 1);
+      }
+    }
+    return date;
+  }
+
+  if (intervalType === "every_weekday") {
+    return addWeekdays(date, index);
+  } else {
+    let days = 1;
+    if (intervalType === "every_2_days") days = 2;
+    else if (intervalType === "every_3_days") days = 3;
+    else if (intervalType === "custom") days = customDays;
+
+    return addDays(date, index * days);
+  }
+}
 
 type FailedGeneration = {
   planIndex: number;
@@ -108,6 +149,13 @@ export default function StudioPage() {
   const [isQueueing, setIsQueueing] = useState(false);
   const [previewPostId, setPreviewPostId] = useState<string | null>(null);
 
+  // Scheduling State
+  const [scheduleMode, setScheduleMode] = useState<"manual" | "auto">("auto");
+  const [startDate, setStartDate] = useState("");
+  const [startTime, setStartTime] = useState("09:00");
+  const [intervalType, setIntervalType] = useState<"every_day" | "every_2_days" | "every_3_days" | "every_weekday" | "custom">("every_day");
+  const [customIntervalDays, setCustomIntervalDays] = useState(2);
+
   // Initialize
   useEffect(() => {
     async function loadData() {
@@ -126,7 +174,12 @@ export default function StudioPage() {
         if (connected.length > 0) {
           setPlatforms([connected[0]]);
         }
-        setUserTimezone(me.timezone || "UTC");
+        const tz = me.timezone || "UTC";
+        setUserTimezone(tz);
+
+        const tomorrow = addDays(new Date(), 1);
+        const tomorrowLocalString = convertUtcToLocalString(tomorrow, tz);
+        setStartDate(tomorrowLocalString.split("T")[0] || "");
       } catch (error) {
         toast.error("Unable to load account context");
       } finally {
@@ -135,6 +188,32 @@ export default function StudioPage() {
     }
     void loadData();
   }, []);
+
+  // Recompute schedules when Auto Schedule parameters change
+  useEffect(() => {
+    if (scheduleMode === "manual") {
+      return;
+    }
+
+    if (succeededPosts.length === 0 || !startDate || !startTime) return;
+
+    const start = new Date(`${startDate}T${startTime}`);
+    if (Number.isNaN(start.getTime())) return;
+
+    setSucceededPosts((current) =>
+      current.map((post, index) => {
+        if (post.isTimeCustomized) return post;
+
+        const calculatedDate = calculateScheduledTime(start, index, intervalType, customIntervalDays);
+        const scheduledString = convertUtcToLocalString(calculatedDate, userTimezone);
+
+        return {
+          ...post,
+          scheduledAt: scheduledString.slice(0, 16), // YYYY-MM-DDTHH:mm
+        };
+      })
+    );
+  }, [startDate, startTime, intervalType, customIntervalDays, userTimezone, scheduleMode, succeededPosts.length]);
 
   // Parse topics
   const handleParseTopics = () => {
@@ -209,6 +288,9 @@ export default function StudioPage() {
           targetAudience: string;
           contentAngle: string;
           platformContent: Record<SocialPlatform, string>;
+          imageUrl?: string;
+          mediaLibraryId?: string;
+          imageStatus?: "pending" | "success" | "failed" | "none";
         }[];
         failed: FailedGeneration[];
       }>("/api/ai/generate-batch", {
@@ -227,21 +309,24 @@ export default function StudioPage() {
       clearInterval(interval);
       setGenerationPhase("Done");
 
-      // Spaced dates starting tomorrow
-      const tomorrow = addDays(new Date(), 1);
+      // Spaced dates starting based on Auto Schedule parameters
+      const start = new Date(`${startDate}T${startTime}`);
       const items: GeneratedPost[] = response.posts.map((post, index) => {
-        const scheduledDate = addDays(tomorrow, index);
-        const scheduledString = convertUtcToLocalString(scheduledDate, userTimezone);
-        const [datePart] = scheduledString.split("T");
+        let calculatedDate = start;
+        if (scheduleMode === "auto" && !Number.isNaN(start.getTime())) {
+          calculatedDate = calculateScheduledTime(start, index, intervalType, customIntervalDays);
+        }
+        const scheduledString = convertUtcToLocalString(calculatedDate, userTimezone);
 
         return {
           id: `post-${index}-${Date.now()}`,
           ...post,
-          scheduledAt: `${datePart}T09:00`,
+          scheduledAt: scheduledString.slice(0, 16),
           selected: true,
           isRegenerating: false,
           isGeneratingImage: false,
           imageStatus: post.imageStatus || "none",
+          isTimeCustomized: false,
         };
       });
 
@@ -387,6 +472,16 @@ export default function StudioPage() {
       return;
     }
 
+    if (scheduleMode === "auto") {
+      for (const item of selected) {
+        const scheduleDate = convertLocalToUtc(item.scheduledAt, userTimezone);
+        if (scheduleDate <= new Date()) {
+          toast.error(`Post for topic "${item.topic}" is scheduled in the past (${item.scheduledAt}). Please reschedule it to a future date.`);
+          return;
+        }
+      }
+    }
+
     setIsQueueing(true);
     let queuedCount = 0;
 
@@ -407,8 +502,8 @@ export default function StudioPage() {
             platformContent: item.platformContent,
             imageUrl: item.imageUrl,
             mediaLibraryId: item.mediaLibraryId,
-            status: "scheduled",
-            scheduledAt: scheduleDate.toISOString(),
+            status: scheduleMode === "auto" ? "scheduled" : "draft",
+            scheduledAt: scheduleMode === "auto" ? scheduleDate.toISOString() : undefined,
             timezone: userTimezone,
             topic: item.topic,
             category: item.category,
@@ -420,7 +515,11 @@ export default function StudioPage() {
         queuedCount++;
       }
 
-      toast.success(`Successfully added ${queuedCount} posts to your scheduling queue!`);
+      toast.success(
+        scheduleMode === "auto"
+          ? `Successfully added ${queuedCount} posts to your scheduling queue!`
+          : `Successfully saved ${queuedCount} posts as drafts!`
+      );
       router.push("/posts");
       router.refresh();
     } catch (error) {
@@ -445,7 +544,7 @@ export default function StudioPage() {
 
   const updatePostSchedule = (postId: string, dateStr: string) => {
     setSucceededPosts((current) =>
-      current.map((p) => (p.id === postId ? { ...p, scheduledAt: dateStr } : p))
+      current.map((p) => (p.id === postId ? { ...p, scheduledAt: dateStr, isTimeCustomized: true } : p))
     );
   };
 
@@ -604,6 +703,91 @@ export default function StudioPage() {
                   onChange={(e) => setGenerateImages(e.target.checked)}
                   className="rounded text-forge focus:ring-forge size-4"
                 />
+              </div>
+
+              {/* Scheduling Options */}
+              <div className="space-y-3 pt-3 border-t">
+                <Label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+                  Scheduling Options
+                </Label>
+                <div>
+                  <Label className="text-xs">Schedule Mode</Label>
+                  <select
+                    value={scheduleMode}
+                    onChange={(e) => setScheduleMode(e.target.value as "manual" | "auto")}
+                    className="w-full h-10 px-3 text-xs bg-white border rounded-lg focus:outline-none focus:ring-1 focus:ring-forge"
+                  >
+                    <option value="auto">Auto Schedule</option>
+                    <option value="manual">Manual (Save as Drafts)</option>
+                  </select>
+                </div>
+
+                {scheduleMode === "auto" && (
+                  <div className="space-y-3 pt-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="start-date" className="text-[11px]">Start Date</Label>
+                        <Input
+                          id="start-date"
+                          type="date"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          className="h-10 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="start-time" className="text-[11px]">Start Time</Label>
+                        <Input
+                          id="start-time"
+                          type="time"
+                          value={startTime}
+                          onChange={(e) => setStartTime(e.target.value)}
+                          className="h-10 text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-[11px]">Timezone</Label>
+                      <Input
+                        type="text"
+                        disabled
+                        value={userTimezone}
+                        className="h-10 text-xs bg-neutral-50 text-neutral-500 cursor-not-allowed"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Interval</Label>
+                      <select
+                        value={intervalType}
+                        onChange={(e) => setIntervalType(e.target.value as any)}
+                        className="w-full h-10 px-3 text-xs bg-white border rounded-lg focus:outline-none focus:ring-1 focus:ring-forge"
+                      >
+                        <option value="every_day">Every day</option>
+                        <option value="every_2_days">Every 2 days</option>
+                        <option value="every_3_days">Every 3 days</option>
+                        <option value="every_weekday">Every weekday</option>
+                        <option value="custom">Custom days</option>
+                      </select>
+                    </div>
+
+                    {intervalType === "custom" && (
+                      <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                        <Label htmlFor="custom-days" className="text-[11px]">Number of days</Label>
+                        <Input
+                          id="custom-days"
+                          type="number"
+                          min={1}
+                          max={30}
+                          value={customIntervalDays}
+                          onChange={(e) => setCustomIntervalDays(Number(e.target.value))}
+                          className="h-10 text-xs"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Section 3 - Generate button */}

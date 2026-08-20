@@ -24,6 +24,21 @@ const statusConfig: Record<
     icon: FilePenLineIcon,
     className: "border-neutral-200 bg-neutral-100 text-neutral-700",
   },
+  generated: {
+    label: "Generated",
+    icon: FilePenLineIcon,
+    className: "border-neutral-200 bg-neutral-100 text-neutral-700",
+  },
+  selected: {
+    label: "Selected",
+    icon: FilePenLineIcon,
+    className: "border-neutral-200 bg-neutral-100 text-neutral-700",
+  },
+  queued: {
+    label: "Queued",
+    icon: InboxIcon,
+    className: "border-teal-200 bg-teal-50 text-teal-700",
+  },
   confirmed: {
     label: "Confirmed",
     icon: InboxIcon,
@@ -34,10 +49,20 @@ const statusConfig: Record<
     icon: CalendarClockIcon,
     className: "border-circuit/30 bg-circuit/10 text-circuit",
   },
+  due: {
+    label: "Due",
+    icon: CalendarClockIcon,
+    className: "border-circuit/30 bg-circuit/10 text-circuit",
+  },
   publishing: {
     label: "Publishing",
     icon: LoaderCircleIcon,
     className: "border-circuit/30 bg-circuit/10 text-circuit",
+  },
+  posted: {
+    label: "Posted",
+    icon: CheckCircle2Icon,
+    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
   },
   published: {
     label: "Published",
@@ -48,6 +73,11 @@ const statusConfig: Record<
     label: "Failed",
     icon: AlertCircleIcon,
     className: "border-ember/30 bg-ember/10 text-ember",
+  },
+  retry: {
+    label: "Retry",
+    icon: LoaderCircleIcon,
+    className: "border-circuit/30 bg-circuit/10 text-circuit",
   },
 };
 

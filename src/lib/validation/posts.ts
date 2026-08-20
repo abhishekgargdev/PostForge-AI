@@ -40,12 +40,23 @@ const createPostShape = {
 export const createPostSchema = z
   .object(createPostShape)
   .superRefine((value, context) => {
-    if (value.status === "scheduled" && !value.scheduledAt) {
-      context.addIssue({
-        code: "custom",
-        message: "scheduledAt is required when status is scheduled",
-        path: ["scheduledAt"],
-      });
+    if (value.status === "scheduled") {
+      if (!value.scheduledAt) {
+        context.addIssue({
+          code: "custom",
+          message: "scheduledAt is required when status is scheduled",
+          path: ["scheduledAt"],
+        });
+      } else {
+        const date = new Date(value.scheduledAt);
+        if (date < new Date()) {
+          context.addIssue({
+            code: "custom",
+            message: "Scheduled time must be in the future",
+            path: ["scheduledAt"],
+          });
+        }
+      }
     }
   });
 
@@ -53,12 +64,23 @@ export const updatePostSchema = z
   .object(createPostShape)
   .partial()
   .superRefine((value, context) => {
-    if (value.status === "scheduled" && !value.scheduledAt) {
-      context.addIssue({
-        code: "custom",
-        message: "scheduledAt is required when status is scheduled",
-        path: ["scheduledAt"],
-      });
+    if (value.status === "scheduled") {
+      if (!value.scheduledAt) {
+        context.addIssue({
+          code: "custom",
+          message: "scheduledAt is required when status is scheduled",
+          path: ["scheduledAt"],
+        });
+      } else {
+        const date = new Date(value.scheduledAt);
+        if (date < new Date()) {
+          context.addIssue({
+            code: "custom",
+            message: "Scheduled time must be in the future",
+            path: ["scheduledAt"],
+          });
+        }
+      }
     }
   });
 
