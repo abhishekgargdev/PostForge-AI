@@ -5,8 +5,11 @@ import {
   getGeminiModelName,
   DEFAULT_SYSTEM_PROMPT,
   PLATFORM_CHAR_LIMITS,
+  generateImage,
 } from "@/lib/ai/gemini-client";
 import type { SocialPlatform } from "@/models/SocialAccount";
+import { uploadImageBuffer, buildThumbnailUrl } from "@/lib/cloudinary";
+import MediaLibrary from "@/models/MediaLibrary";
 
 export type PlanEntry = {
   topic: string;
@@ -25,6 +28,9 @@ export type GeneratedPostResult = {
   targetAudience: string;
   contentAngle: string;
   platformContent: Partial<Record<SocialPlatform, string>>;
+  imageUrl?: string;
+  mediaLibraryId?: string;
+  imageStatus?: "pending" | "success" | "failed" | "none";
   error?: string;
 };
 
@@ -172,11 +178,13 @@ export async function generateCampaignBatch(params: {
   format: string;
   targetAudience: string;
   platforms: SocialPlatform[];
+  generateImages?: boolean;
+  userId?: string;
 }): Promise<{
   succeeded: GeneratedPostResult[];
   failed: { planIndex: number; topic: string; reason: string }[];
 }> {
-  const { topics, count, style, format, targetAudience, platforms } = params;
+  const { topics, count, style, format, targetAudience, platforms, generateImages, userId } = params;
 
   // 1. Generate plan array (Layer 1)
   const plan = await generateCampaignPlan({ topics, count, style, format, targetAudience });
@@ -221,9 +229,54 @@ export async function generateCampaignBatch(params: {
         attempts++;
       }
 
+      // 4. Optionally generate image (fails gracefully)
+      let imageUrl: string | undefined = undefined;
+      let mediaLibraryId: string | undefined = undefined;
+      let imageStatus: "pending" | "success" | "failed" | "none" = "none";
+
+      if (generateImages) {
+        imageStatus = "pending";
+        try {
+          const imgPrompt = `A high quality, professional, conceptual modern graphic representing: ${entry.topic}`;
+          const imgResult = await generateImage({ prompt: imgPrompt, userId });
+          
+          if (imgResult.success) {
+            const upload = await uploadImageBuffer(
+              imgResult.imageBuffer,
+              "postforge/ai-generated",
+            );
+            const thumbnailUrl = buildThumbnailUrl(upload.publicId);
+            const fileName = `ai-batch-${Date.now()}.png`;
+
+            const media = await MediaLibrary.create({
+              userId,
+              fileName,
+              fileType: "image",
+              fileUrl: upload.secureUrl,
+              thumbnailUrl,
+              source: "ai-generated",
+              aiPrompt: imgPrompt,
+              cloudinaryPublicId: upload.publicId,
+            });
+
+            imageUrl = upload.secureUrl;
+            mediaLibraryId = media._id.toString();
+            imageStatus = "success";
+          } else {
+            imageStatus = "failed";
+          }
+        } catch (imgErr) {
+          console.error("Batch image generation failed for topic:", entry.topic, imgErr);
+          imageStatus = "failed";
+        }
+      }
+
       succeeded.push({
         ...entry,
         platformContent,
+        imageUrl,
+        mediaLibraryId,
+        imageStatus,
       });
     } catch (err) {
       const reason = err instanceof Error ? err.message : "Unknown writer error";

@@ -71,6 +71,7 @@ type GeneratedPost = {
   imageUrl?: string;
   mediaLibraryId?: string;
   isGeneratingImage: boolean;
+  imageStatus: "pending" | "success" | "failed" | "none";
 };
 
 type FailedGeneration = {
@@ -240,6 +241,7 @@ export default function StudioPage() {
           selected: true,
           isRegenerating: false,
           isGeneratingImage: false,
+          imageStatus: post.imageStatus || "none",
         };
       });
 
@@ -314,7 +316,9 @@ export default function StudioPage() {
     const imgPrompt = `A high quality, professional, conceptual modern graphic representing: ${post.topic}`;
 
     setSucceededPosts((current) =>
-      current.map((p) => (p.id === postId ? { ...p, isGeneratingImage: true } : p))
+      current.map((p) =>
+        p.id === postId ? { ...p, isGeneratingImage: true, imageStatus: "pending" } : p
+      )
     );
 
     try {
@@ -326,12 +330,20 @@ export default function StudioPage() {
       setSucceededPosts((current) =>
         current.map((p) =>
           p.id === postId
-            ? { ...p, imageUrl: imgRes.fileUrl, mediaLibraryId: imgRes.id }
+            ? {
+                ...p,
+                imageUrl: imgRes.fileUrl,
+                mediaLibraryId: imgRes.id,
+                imageStatus: "success",
+              }
             : p
         )
       );
       toast.success("Visual graphic generated!");
     } catch (error) {
+      setSucceededPosts((current) =>
+        current.map((p) => (p.id === postId ? { ...p, imageStatus: "failed" } : p))
+      );
       toast.error(error instanceof Error ? error.message : "Graphic generation failed");
     } finally {
       setSucceededPosts((current) =>
@@ -402,6 +414,7 @@ export default function StudioPage() {
             category: item.category,
             subtopic: item.subtopic,
             format: item.format,
+            imageStatus: item.imageStatus || "none",
           }),
         });
         queuedCount++;
@@ -798,7 +811,7 @@ export default function StudioPage() {
                               <Label className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider flex items-center gap-1 pb-1.5 border-b">
                                 <ImageIcon className="size-3 text-forge" /> Shared Graphic
                               </Label>
-                              {post.isGeneratingImage ? (
+                              {post.isGeneratingImage || post.imageStatus === "pending" ? (
                                 <div className="mt-3 flex flex-col items-center justify-center gap-1 border border-dashed rounded-xl p-4 min-h-[100px]">
                                   <Loader size="sm" className="text-forge" />
                                   <p className="text-[9px] text-neutral-400">Forging graphic visual...</p>
@@ -809,11 +822,16 @@ export default function StudioPage() {
                                   <img src={post.imageUrl} alt="AI visual preview" className="w-full max-h-24 object-contain" />
                                   <button
                                     type="button"
-                                    onClick={() => setSucceededPosts((current) => current.map((p) => p.id === post.id ? { ...p, imageUrl: undefined, mediaLibraryId: undefined } : p))}
+                                    onClick={() => setSucceededPosts((current) => current.map((p) => p.id === post.id ? { ...p, imageUrl: undefined, mediaLibraryId: undefined, imageStatus: "none" } : p))}
                                     className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
                                   >
                                     <Trash2 className="size-3" />
                                   </button>
+                                </div>
+                              ) : post.imageStatus === "failed" ? (
+                                <div className="mt-3 flex flex-col items-center justify-center gap-2 border border-dashed border-red-300 rounded-xl p-4 text-center min-h-[100px] bg-red-50/35">
+                                  <AlertTriangle className="size-4 text-red-500" />
+                                  <p className="text-[9px] text-red-700 font-semibold">Image generation failed</p>
                                 </div>
                               ) : (
                                 <div className="mt-3 flex flex-col items-center justify-center border border-dashed rounded-xl p-4 text-center min-h-[90px]">
@@ -822,7 +840,17 @@ export default function StudioPage() {
                               )}
                             </div>
 
-                            {!post.imageUrl && !post.isGeneratingImage && (
+                            {post.imageStatus === "failed" ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                className="w-full mt-2 h-8 text-[10px] bg-red-100 text-red-700 hover:bg-red-200 border-transparent"
+                                onClick={() => handleGenerateImageForPost(post.id)}
+                              >
+                                <RefreshCw className="mr-1 size-3 text-red-600" /> Retry Image
+                              </Button>
+                            ) : !post.imageUrl && !post.isGeneratingImage && (
                               <Button
                                 type="button"
                                 size="sm"

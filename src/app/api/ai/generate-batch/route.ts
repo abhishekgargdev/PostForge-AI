@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { topics, count, style, format, targetAudience, platforms } = parsed.data;
+    const { topics, count, style, format, targetAudience, platforms, generateImages } = parsed.data;
 
     const results = await generateCampaignBatch({
       topics,
@@ -77,6 +77,8 @@ export async function POST(request: NextRequest) {
       format,
       targetAudience,
       platforms,
+      generateImages,
+      userId: user.id,
     });
 
     return NextResponse.json({

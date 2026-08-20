@@ -34,6 +34,7 @@ const createPostShape = {
   subtopic: z.string().trim().optional(),
   format: z.string().trim().optional(),
   timezone: z.string().trim().optional(),
+  imageStatus: z.enum(["pending", "success", "failed", "none"]).default("none"),
 };
 
 export const createPostSchema = z

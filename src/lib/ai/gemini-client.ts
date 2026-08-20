@@ -4,6 +4,8 @@ import type { PostGoal } from "@/lib/validation/ai";
 import { POST_GOAL_LABELS } from "@/lib/validation/ai";
 import type { PostTone } from "@/lib/validation/posts";
 import type { SocialPlatform } from "@/models/SocialAccount";
+import { connectDB } from "@/lib/db";
+import { createAiGenerationFailureNotification } from "@/lib/notifications/create";
 
 export const DEFAULT_SYSTEM_PROMPT =
   "You are the content assistant inside PostForge AI, writing social posts on behalf of a professional user. Always write in clear, natural human language — no corporate filler, no excessive emoji, no hashtag spam (max 3-5 relevant hashtags only if the platform benefits from them). Match the requested tone exactly. Never fabricate statistics, quotes, or claims the user didn't provide. Keep sentences scannable on mobile.";
@@ -57,7 +59,12 @@ type GenerateTextInput = {
 
 type GenerateImageInput = {
   prompt: string;
+  userId?: string;
 };
+
+export type GenerateImageResult =
+  | { success: true; imageBuffer: Buffer; mimeType: string; model: string }
+  | { success: false; errorCode: string; message: string };
 
 type ExtendedGenerationConfig = {
   responseModalities?: string[];
@@ -296,43 +303,93 @@ export async function generateText(input: GenerateTextInput): Promise<string> {
   });
 }
 
-export async function generateImage({ prompt }: GenerateImageInput): Promise<Buffer> {
-  return generateWithRotation(async (apiKey) => {
-    const modelName = getGeminiImageModelName();
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predict?key=${apiKey}`;
+export async function generateImage(input: GenerateImageInput): Promise<GenerateImageResult> {
+  const modelName = getGeminiImageModelName();
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        instances: [{ prompt }],
-        parameters: {
-          sampleCount: 1,
-          aspectRatio: "1:1",
-          outputMimeType: "image/png",
+  try {
+    const result = await generateWithRotation(async (apiKey) => {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      }),
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: input.prompt }],
+            },
+          ],
+          generationConfig: {
+            responseModalities: ["TEXT", "IMAGE"],
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        const status = response.status;
+        const error = new Error(`Gemini Image API error: ${errorText || response.statusText}`);
+        (error as any).status = status;
+        throw error;
+      }
+
+      const data = await response.json();
+      const parts = data.candidates?.[0]?.content?.parts || [];
+      let imagePart = null;
+
+      for (const p of parts) {
+        if (p.inlineData?.data) {
+          imagePart = p;
+          break;
+        }
+      }
+
+      if (!imagePart) {
+        throw new Error("Gemini returned no inline image data.");
+      }
+
+      const base64Data = imagePart.inlineData.data;
+      const mimeType = imagePart.inlineData.mimeType || "image/png";
+
+      return {
+        buffer: Buffer.from(base64Data, "base64"),
+        mimeType,
+      };
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      let status = response.status;
-      const error = new Error(`Imagen API error: ${errorText || response.statusText}`);
-      (error as any).status = status;
-      throw error;
+    return {
+      success: true,
+      imageBuffer: result.buffer,
+      mimeType: result.mimeType,
+      model: modelName,
+    };
+  } catch (error: any) {
+    const message = error instanceof Error ? error.message : "Unknown image generation error";
+    const status = error.status ? String(error.status) : "GENERATE_IMAGE_FAILED";
+
+    console.error(`generateImage failed for model ${modelName}. Error:`, message);
+
+    if (input.userId && (isRetryableGeminiError(error) || message.includes("exhausted"))) {
+      try {
+        await connectDB();
+        await createAiGenerationFailureNotification({
+          userId: input.userId,
+          generationType: "image",
+          errorMessage: message,
+        });
+      } catch (dbErr) {
+        console.error("Failed to create error notification in generateImage:", dbErr);
+      }
     }
 
-    const data = await response.json();
-    const base64Data = data.predictions?.[0]?.bytesBase64Encoded;
-
-    if (!base64Data) {
-      throw new Error("Imagen returned no image data in predictions.");
-    }
-
-    return Buffer.from(base64Data, "base64");
-  });
+    return {
+      success: false,
+      errorCode: status,
+      message,
+    };
+  }
 }
 
 export { TEXT_MODEL, IMAGE_MODEL, PLATFORM_CHAR_LIMITS };

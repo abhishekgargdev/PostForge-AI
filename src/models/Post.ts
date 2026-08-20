@@ -25,6 +25,7 @@ export interface IPost {
   lastPublishError?: string;
   externalPostId?: string;
   retryCount: number;
+  imageStatus?: "pending" | "success" | "failed" | "none";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -67,6 +68,11 @@ const postSchema = new Schema<IPost>(
     lastPublishError: { type: String },
     externalPostId: { type: String },
     retryCount: { type: Number, required: true, default: 0 },
+    imageStatus: {
+      type: String,
+      enum: ["pending", "success", "failed", "none"],
+      default: "none",
+    },
   },
   { timestamps: true },
 );

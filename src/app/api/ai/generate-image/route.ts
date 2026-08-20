@@ -12,8 +12,11 @@ import { createAiGenerationFailureNotification } from "@/lib/notifications/creat
 import { toMediaResponse } from "@/lib/media/serialize";
 import MediaLibrary from "@/models/MediaLibrary";
 
+import Post from "@/models/Post";
+
 const generateImageSchema = z.object({
   prompt: z.string().trim().min(1, "Prompt is required"),
+  postId: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -39,9 +42,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const imageBuffer = await generateImage({ prompt: parsed.data.prompt });
+    const { prompt, postId } = parsed.data;
+
+    // Set post status to pending if we have a postId
+    if (postId) {
+      await connectDB();
+      await Post.findByIdAndUpdate(postId, { imageStatus: "pending" });
+    }
+
+    const result = await generateImage({ prompt, userId });
+
+    if (!result.success) {
+      if (postId) {
+        await connectDB();
+        await Post.findByIdAndUpdate(postId, { imageStatus: "failed" });
+      }
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            message: result.message,
+            code: result.errorCode,
+          },
+        },
+        { status: 500 },
+      );
+    }
+
     const upload = await uploadImageBuffer(
-      imageBuffer,
+      result.imageBuffer,
       "postforge/ai-generated",
     );
     const thumbnailUrl = buildThumbnailUrl(upload.publicId);
@@ -57,9 +86,17 @@ export async function POST(request: NextRequest) {
       fileUrl: upload.secureUrl,
       thumbnailUrl,
       source: "ai-generated",
-      aiPrompt: parsed.data.prompt,
+      aiPrompt: prompt,
       cloudinaryPublicId: upload.publicId,
     });
+
+    if (postId) {
+      await Post.findByIdAndUpdate(postId, {
+        imageUrl: upload.secureUrl,
+        mediaLibraryId: media._id,
+        imageStatus: "success",
+      });
+    }
 
     return NextResponse.json({
       success: true,
@@ -68,16 +105,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (isAuthError(error)) {
       return error.response;
-    }
-
-    if (userId && isGeminiKeysExhaustedError(error)) {
-      await connectDB();
-      await createAiGenerationFailureNotification({
-        userId,
-        generationType: "image",
-        errorMessage:
-          error instanceof Error ? error.message : "Unknown Gemini API error",
-      });
     }
 
     const message =

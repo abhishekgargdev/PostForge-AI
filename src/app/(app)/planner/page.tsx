@@ -308,6 +308,7 @@ export default function PlannerPage() {
             category: goal,
             subtopic: tone,
             format: "text-graphic",
+            imageStatus: item.imageUrl ? "success" : "none",
           }),
         });
         successCount++;

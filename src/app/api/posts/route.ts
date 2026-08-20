@@ -126,6 +126,7 @@ export async function POST(request: NextRequest) {
       subtopic: parsed.data.subtopic,
       format: parsed.data.format,
       timezone: parsed.data.timezone || user.timezone || "UTC",
+      imageStatus: parsed.data.imageStatus,
     });
 
     if (

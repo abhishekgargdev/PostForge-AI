@@ -123,6 +123,9 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     if (parsed.data.timezone !== undefined) {
       post.timezone = parsed.data.timezone || undefined;
     }
+    if (parsed.data.imageStatus !== undefined) {
+      post.imageStatus = parsed.data.imageStatus;
+    }
     if (parsed.data.status !== undefined) {
       post.status = parsed.data.status;
       if (parsed.data.status === "published" && !post.publishedAt) {
