@@ -15,6 +15,16 @@ export interface IPost {
   publishedAt?: Date;
   imageUrl?: string;
   mediaLibraryId?: mongoose.Types.ObjectId;
+  topic?: string;
+  category?: string;
+  subtopic?: string;
+  format?: string;
+  timezone?: string;
+  publishAttempts: number;
+  lastPublishAttemptAt?: Date;
+  lastPublishError?: string;
+  externalPostId?: string;
+  retryCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -47,6 +57,16 @@ const postSchema = new Schema<IPost>(
       type: Schema.Types.ObjectId,
       ref: "MediaLibrary",
     },
+    topic: { type: String },
+    category: { type: String },
+    subtopic: { type: String },
+    format: { type: String },
+    timezone: { type: String, default: "UTC" },
+    publishAttempts: { type: Number, required: true, default: 0 },
+    lastPublishAttemptAt: { type: Date },
+    lastPublishError: { type: String },
+    externalPostId: { type: String },
+    retryCount: { type: Number, required: true, default: 0 },
   },
   { timestamps: true },
 );

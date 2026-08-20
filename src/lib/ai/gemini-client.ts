@@ -25,8 +25,12 @@ function getGeminiModelName(): string {
   return process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
 }
 
+function getGeminiImageModelName(): string {
+  return process.env.GEMINI_IMAGE_MODEL?.trim() || "imagen-3.0-generate-002";
+}
+
 const TEXT_MODEL = getGeminiModelName();
-const IMAGE_MODEL = getGeminiModelName();
+const IMAGE_MODEL = getGeminiImageModelName();
 
 const PLATFORM_CHAR_LIMITS: Record<SocialPlatform, number> = {
   linkedin: 3000,
@@ -171,7 +175,7 @@ export function getImageModel(apiKey?: string): GenerativeModel {
   const genAI = new GoogleGenerativeAI(key);
 
   return genAI.getGenerativeModel({
-    model: getGeminiModelName(),
+    model: getGeminiImageModelName(),
     generationConfig: {
       responseModalities: ["TEXT", "IMAGE"],
     } as ExtendedGenerationConfig as never,
@@ -294,9 +298,40 @@ export async function generateText(input: GenerateTextInput): Promise<string> {
 
 export async function generateImage({ prompt }: GenerateImageInput): Promise<Buffer> {
   return generateWithRotation(async (apiKey) => {
-    const model = getImageModel(apiKey);
-    const result = await model.generateContent(prompt);
-    return extractGeneratedImageBuffer(result);
+    const modelName = getGeminiImageModelName();
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predict?key=${apiKey}`;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        instances: [{ prompt }],
+        parameters: {
+          sampleCount: 1,
+          aspectRatio: "1:1",
+          outputMimeType: "image/png",
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let status = response.status;
+      const error = new Error(`Imagen API error: ${errorText || response.statusText}`);
+      (error as any).status = status;
+      throw error;
+    }
+
+    const data = await response.json();
+    const base64Data = data.predictions?.[0]?.bytesBase64Encoded;
+
+    if (!base64Data) {
+      throw new Error("Imagen returned no image data in predictions.");
+    }
+
+    return Buffer.from(base64Data, "base64");
   });
 }
 

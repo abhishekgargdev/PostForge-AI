@@ -101,12 +101,27 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       post.platforms = parsed.data.platforms;
     }
     if (parsed.data.imageUrl !== undefined) {
-      post.imageUrl = parsed.data.imageUrl;
+      post.imageUrl = parsed.data.imageUrl || undefined;
     }
     if (parsed.data.mediaLibraryId !== undefined) {
       post.mediaLibraryId = parsed.data.mediaLibraryId
         ? new mongoose.Types.ObjectId(parsed.data.mediaLibraryId)
         : undefined;
+    }
+    if (parsed.data.topic !== undefined) {
+      post.topic = parsed.data.topic || undefined;
+    }
+    if (parsed.data.category !== undefined) {
+      post.category = parsed.data.category || undefined;
+    }
+    if (parsed.data.subtopic !== undefined) {
+      post.subtopic = parsed.data.subtopic || undefined;
+    }
+    if (parsed.data.format !== undefined) {
+      post.format = parsed.data.format || undefined;
+    }
+    if (parsed.data.timezone !== undefined) {
+      post.timezone = parsed.data.timezone || undefined;
     }
     if (parsed.data.status !== undefined) {
       post.status = parsed.data.status;

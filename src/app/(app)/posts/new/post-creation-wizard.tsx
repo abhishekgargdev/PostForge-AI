@@ -46,7 +46,7 @@ import {
   type SocialPlatform,
 } from "@/types/platforms";
 import type { PostStatus } from "@/models/Post";
-import { cn } from "@/lib/utils";
+import { cn, convertLocalToUtc, convertUtcToLocalString } from "@/lib/utils";
 
 type GenerateTextResponse = {
   content: string;
@@ -138,6 +138,7 @@ export function PostCreationWizard() {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [scheduledAt, setScheduledAt] = useState("");
   const [justGenerated, setJustGenerated] = useState(false);
+  const [userTimezone, setUserTimezone] = useState("UTC");
 
   const singleConnectedPlatform =
     connectedPlatforms.length === 1 ? connectedPlatforms[0] : null;
@@ -156,11 +157,12 @@ export function PostCreationWizard() {
       setIsLoadingAccounts(true);
 
       try {
-        const [accounts, preferences] = await Promise.all([
+        const [accounts, preferences, me] = await Promise.all([
           apiClient<AccountSummary[]>("/api/accounts"),
           apiClient<ContentPreferencesResponse>(
             "/api/user/content-preferences",
           ).catch(() => null),
+          apiClient<{ timezone: string }>("/api/auth/me").catch(() => ({ timezone: "UTC" })),
         ]);
 
         if (cancelled) {
@@ -172,6 +174,7 @@ export function PostCreationWizard() {
           .map((account) => account.platform);
 
         setConnectedPlatforms(connected);
+        setUserTimezone(me.timezone || "UTC");
 
         const promptParam = searchParams.get("prompt");
         const platformParam = searchParams.get("platform");
@@ -327,6 +330,13 @@ export function PostCreationWizard() {
       setHasGenerated(true);
       setActivePreviewPlatform(platforms[0]);
       triggerGenerationBurst();
+
+      const nowInTimezone = new Date();
+      const tomorrow = new Date(nowInTimezone.getTime() + 24 * 60 * 60 * 1000);
+      const tomorrowLocalString = convertUtcToLocalString(tomorrow, userTimezone);
+      const [datePart] = tomorrowLocalString.split("T");
+      setScheduledAt(`${datePart}T09:00`);
+
       toast.success("Posts generated for your selected platforms");
     } catch (error) {
       toast.error(
@@ -476,6 +486,7 @@ export function PostCreationWizard() {
           mediaLibraryId: mediaLibraryId || undefined,
           status,
           scheduledAt: options?.scheduledAt,
+          timezone: userTimezone,
         }),
       });
 
@@ -543,7 +554,7 @@ export function PostCreationWizard() {
       return;
     }
 
-    const scheduleDate = new Date(scheduledAt);
+    const scheduleDate = convertLocalToUtc(scheduledAt, userTimezone);
     if (Number.isNaN(scheduleDate.getTime()) || scheduleDate <= new Date()) {
       toast.error("Scheduled time must be in the future.");
       return;

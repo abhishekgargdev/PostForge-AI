@@ -14,6 +14,8 @@ export type PostTone = (typeof POST_TONES)[number];
 
 const scheduledAtSchema = z.union([z.string().datetime(), z.date()]);
 
+const emptyStringToNullOrUndefined = (val: unknown) => (val === "" ? null : val);
+
 const createPostShape = {
   content: z.string().trim().min(1, "Content is required"),
   aiPrompt: z.string().trim().optional(),
@@ -23,10 +25,15 @@ const createPostShape = {
   platformContent: z
     .record(z.enum(SOCIAL_PLATFORMS), z.string().trim().min(1))
     .optional(),
-  imageUrl: z.string().url().optional(),
-  mediaLibraryId: z.string().trim().optional(),
+  imageUrl: z.preprocess(emptyStringToNullOrUndefined, z.string().url().optional().nullable()),
+  mediaLibraryId: z.preprocess(emptyStringToNullOrUndefined, z.string().trim().optional().nullable()),
   status: z.enum(POST_STATUSES).default("draft"),
   scheduledAt: scheduledAtSchema.optional(),
+  topic: z.string().trim().optional(),
+  category: z.string().trim().optional(),
+  subtopic: z.string().trim().optional(),
+  format: z.string().trim().optional(),
+  timezone: z.string().trim().optional(),
 };
 
 export const createPostSchema = z

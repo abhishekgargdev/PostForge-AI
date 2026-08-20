@@ -121,6 +121,11 @@ export async function POST(request: NextRequest) {
       status: parsed.data.status,
       scheduledAt,
       publishedAt,
+      topic: parsed.data.topic,
+      category: parsed.data.category,
+      subtopic: parsed.data.subtopic,
+      format: parsed.data.format,
+      timezone: parsed.data.timezone || user.timezone || "UTC",
     });
 
     if (

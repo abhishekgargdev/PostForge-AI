@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   MoreHorizontal,
   PlusCircle,
+  Calendar,
   type LucideIcon,
 } from "lucide-react";
 
@@ -24,6 +25,11 @@ export const appNavItems: AppNavItem[] = [
     label: "Posts",
     href: "/posts",
     icon: FileText,
+  },
+  {
+    label: "Planner",
+    href: "/planner",
+    icon: Calendar,
   },
   {
     label: "Create",
@@ -53,6 +59,10 @@ export function isNavItemActive(pathname: string, href: string): boolean {
       pathname === "/posts" ||
       (pathname.startsWith("/posts/") && pathname !== "/posts/new")
     );
+  }
+
+  if (href === "/planner") {
+    return pathname === "/planner" || pathname.startsWith("/planner/");
   }
 
   if (href === "/settings") {
