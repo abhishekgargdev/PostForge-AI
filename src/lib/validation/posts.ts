@@ -23,7 +23,7 @@ const createPostShape = {
     .array(z.enum(SOCIAL_PLATFORMS))
     .min(1, "Select at least one platform"),
   platformContent: z
-    .record(z.enum(SOCIAL_PLATFORMS), z.string().trim().min(1))
+    .record(z.string(), z.string().trim().min(1))
     .optional(),
   imageUrl: z.preprocess(emptyStringToNullOrUndefined, z.string().url().optional().nullable()),
   mediaLibraryId: z.preprocess(emptyStringToNullOrUndefined, z.string().trim().optional().nullable()),

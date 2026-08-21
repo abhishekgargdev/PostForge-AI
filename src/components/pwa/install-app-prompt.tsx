@@ -6,7 +6,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const SESSION_DISMISS_KEY = "postforge-pwa-install-dismissed";
+const LOCAL_DISMISS_KEY = "postforge-pwa-install-dismissed";
+const LOCAL_INSTALLED_KEY = "postforge-pwa-installed";
 
 export function InstallAppPrompt() {
   const [deferredPrompt, setDeferredPrompt] =
@@ -19,7 +20,21 @@ export function InstallAppPrompt() {
       return;
     }
 
-    if (window.sessionStorage.getItem(SESSION_DISMISS_KEY) === "1") {
+    // 1. Check if already installed
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone === true;
+
+    if (
+      localStorage.getItem(LOCAL_INSTALLED_KEY) === "1" ||
+      isStandalone
+    ) {
+      return;
+    }
+
+    // 2. Check if dismissed today
+    const today = new Date().toDateString();
+    if (localStorage.getItem(LOCAL_DISMISS_KEY) === today) {
       return;
     }
 
@@ -29,18 +44,27 @@ export function InstallAppPrompt() {
       setVisible(true);
     }
 
+    function handleAppInstalled() {
+      localStorage.setItem(LOCAL_INSTALLED_KEY, "1");
+      setVisible(false);
+      setDeferredPrompt(null);
+    }
+
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
 
     return () => {
       window.removeEventListener(
         "beforeinstallprompt",
         handleBeforeInstallPrompt,
       );
+      window.removeEventListener("appinstalled", handleAppInstalled);
     };
   }, []);
 
   function dismiss() {
-    window.sessionStorage.setItem(SESSION_DISMISS_KEY, "1");
+    const today = new Date().toDateString();
+    localStorage.setItem(LOCAL_DISMISS_KEY, today);
     setVisible(false);
     setDeferredPrompt(null);
   }
@@ -54,10 +78,18 @@ export function InstallAppPrompt() {
 
     try {
       await deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
-    } finally {
+      const choiceResult = await deferredPrompt.userChoice;
+      if (choiceResult.outcome === "accepted") {
+        localStorage.setItem(LOCAL_INSTALLED_KEY, "1");
+        setVisible(false);
+      } else {
+        dismiss();
+      }
+    } catch (err) {
       dismiss();
+    } finally {
       setIsInstalling(false);
+      setDeferredPrompt(null);
     }
   }
 

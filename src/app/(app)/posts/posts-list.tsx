@@ -3,7 +3,16 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
-import { PlusIcon, SparklesIcon } from "lucide-react";
+import {
+  PlusIcon,
+  SparklesIcon,
+  MoreVertical,
+  Eye,
+  Edit,
+  Trash2,
+  Send,
+  Calendar,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { apiClient } from "@/lib/api-client";
@@ -41,6 +50,28 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { POST_STATUSES, type PostStatus } from "@/types/posts";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Loader } from "@/components/ui/loaders";
+import { SOCIAL_PLATFORMS, type SocialPlatform } from "@/types/platforms";
+import { convertLocalToUtc, convertUtcToLocalString } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 const STATUS_FILTERS: Array<PostStatus | "all"> = ["all", ...POST_STATUSES];
 
@@ -58,6 +89,147 @@ export function PostsList() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+
+  const [selectedPost, setSelectedPost] = useState<PostResponse | null>(null);
+  const [activeDialog, setActiveDialog] = useState<"view" | "edit" | "delete" | "publish" | null>(null);
+  const [userTimezone, setUserTimezone] = useState("UTC");
+
+  // Edit form state
+  const [editContent, setEditContent] = useState("");
+  const [editPlatforms, setEditPlatforms] = useState<SocialPlatform[]>([]);
+  const [editStatus, setEditStatus] = useState<PostStatus>("draft");
+  const [editScheduledAt, setEditScheduledAt] = useState("");
+  const [isActionLoading, setIsActionLoading] = useState(false);
+
+  // Load timezone on mount
+  useEffect(() => {
+    apiClient<{ timezone: string }>("/api/auth/me")
+      .then((me) => setUserTimezone(me.timezone || "UTC"))
+      .catch(() => setUserTimezone("UTC"));
+  }, []);
+
+  const handleOpenDialog = (post: PostResponse, type: "view" | "edit" | "delete" | "publish") => {
+    setSelectedPost(post);
+    setActiveDialog(type);
+
+    if (type === "edit") {
+      setEditContent(post.content);
+      setEditPlatforms(post.platforms);
+      setEditStatus(post.status);
+      if (post.scheduledAt) {
+        setEditScheduledAt(convertUtcToLocalString(post.scheduledAt, userTimezone));
+      } else {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowLocal = convertUtcToLocalString(tomorrow, userTimezone);
+        const [datePart] = tomorrowLocal.split("T");
+        setEditScheduledAt(`${datePart}T09:00`);
+      }
+    }
+  };
+
+  const handleCloseDialog = () => {
+    setActiveDialog(null);
+    setSelectedPost(null);
+  };
+
+  const toggleEditPlatform = (platform: SocialPlatform) => {
+    setEditPlatforms((current) =>
+      current.includes(platform)
+        ? current.filter((item) => item !== platform)
+        : [...current, platform]
+    );
+  };
+
+  const handleDeletePost = async () => {
+    if (!selectedPost) return;
+    setIsActionLoading(true);
+    try {
+      await apiClient(`/api/posts/${selectedPost.id}`, {
+        method: "DELETE",
+      });
+      toast.success("Post deleted successfully");
+      handleCloseDialog();
+      void fetchPosts();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to delete post");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handlePublishPostNow = async () => {
+    if (!selectedPost) return;
+    setIsActionLoading(true);
+    try {
+      const result = await apiClient<{ post: PostResponse }>(
+        `/api/posts/${selectedPost.id}/publish`,
+        { method: "POST" }
+      );
+      toast.success(
+        result.post.status === "published"
+          ? "Post published successfully"
+          : result.post.status === "failed"
+            ? "Publishing failed on all platforms"
+            : "Post is publishing"
+      );
+      handleCloseDialog();
+      void fetchPosts();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to publish post");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleSaveEditPost = async () => {
+    if (!selectedPost) return;
+
+    if (!editContent.trim()) {
+      toast.error("Content is required");
+      return;
+    }
+
+    if (editPlatforms.length === 0) {
+      toast.error("Select at least one platform");
+      return;
+    }
+
+    let isoScheduledAt = undefined;
+    if (editStatus === "scheduled") {
+      if (!editScheduledAt) {
+        toast.error("Scheduled date and time is required");
+        return;
+      }
+      const scheduleDate = convertLocalToUtc(editScheduledAt, userTimezone);
+      if (Number.isNaN(scheduleDate.getTime()) || scheduleDate <= new Date()) {
+        toast.error("Scheduled time must be in the future");
+        return;
+      }
+      isoScheduledAt = scheduleDate.toISOString();
+    }
+
+    setIsActionLoading(true);
+    try {
+      await apiClient(`/api/posts/${selectedPost.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          content: editContent,
+          platforms: editPlatforms,
+          status: editStatus,
+          scheduledAt: isoScheduledAt,
+          timezone: userTimezone,
+        }),
+      });
+      toast.success("Post updated successfully");
+      handleCloseDialog();
+      void fetchPosts();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update post");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
 
   const fetchPosts = useCallback(async () => {
     setIsLoading(true);
@@ -94,7 +266,8 @@ export function PostsList() {
   }, [statusFilter]);
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+    <>
+      <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Posts</h1>
@@ -170,7 +343,35 @@ export function PostsList() {
                     <CardTitle className="line-clamp-2 text-base">
                       {truncate(post.content, 80)}
                     </CardTitle>
-                    <PostStatusBadge status={post.status} />
+                    <div className="flex items-center gap-1">
+                      <PostStatusBadge status={post.status} />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <Button variant="ghost" size="icon-sm" aria-label="Open actions menu">
+                              <MoreVertical className="size-4" />
+                            </Button>
+                          }
+                        />
+                        <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuItem onClick={() => handleOpenDialog(post, "view")}>
+                            <Eye className="mr-2 size-4" /> View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleOpenDialog(post, "edit")}>
+                            <Edit className="mr-2 size-4" /> Edit Post
+                          </DropdownMenuItem>
+                          {post.status !== "published" && post.status !== "publishing" && (
+                            <DropdownMenuItem onClick={() => handleOpenDialog(post, "publish")}>
+                              <Send className="mr-2 size-4" /> Post Now
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem variant="destructive" onClick={() => handleOpenDialog(post, "delete")}>
+                            <Trash2 className="mr-2 size-4" /> Delete Post
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                   <CardDescription>
                     {formatPostScheduleLabel(post) ??
@@ -196,6 +397,7 @@ export function PostsList() {
                   <TableHead>Platforms</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Schedule / Updated</TableHead>
+                  <TableHead className="w-16 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -226,6 +428,34 @@ export function PostsList() {
                     <TableCell>
                       {formatPostScheduleLabel(post) ??
                         format(new Date(post.updatedAt), "MMM d, yyyy h:mm a")}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <Button variant="ghost" size="icon-sm" aria-label="Open actions menu">
+                              <MoreVertical className="size-4" />
+                            </Button>
+                          }
+                        />
+                        <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuItem onClick={() => handleOpenDialog(post, "view")}>
+                            <Eye className="mr-2 size-4" /> View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleOpenDialog(post, "edit")}>
+                            <Edit className="mr-2 size-4" /> Edit Post
+                          </DropdownMenuItem>
+                          {post.status !== "published" && post.status !== "publishing" && (
+                            <DropdownMenuItem onClick={() => handleOpenDialog(post, "publish")}>
+                              <Send className="mr-2 size-4" /> Post Now
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem variant="destructive" onClick={() => handleOpenDialog(post, "delete")}>
+                            <Trash2 className="mr-2 size-4" /> Delete Post
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -258,5 +488,205 @@ export function PostsList() {
         </Button>
       </div>
     </div>
+
+      {/* View Dialog */}
+      <Dialog open={activeDialog === "view"} onOpenChange={(open) => !open && handleCloseDialog()}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Post Details</DialogTitle>
+            <DialogDescription>Full details and configuration of this post.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-1">
+              <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+                Content
+              </span>
+              <div className="rounded-xl border bg-neutral-50 p-3 text-sm whitespace-pre-wrap dark:bg-ink dark:border-neutral-800">
+                {selectedPost?.content}
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+                Platforms
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {selectedPost?.platforms.map((platform) => (
+                  <Badge key={platform} variant="outline">
+                    {formatPlatformLabel(platform)}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+                  Status
+                </span>
+                <div>
+                  {selectedPost && <PostStatusBadge status={selectedPost.status} />}
+                </div>
+              </div>
+
+              {selectedPost?.scheduledAt && (
+                <div className="space-y-1">
+                  <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+                    Scheduled Time
+                  </span>
+                  <p className="text-sm">
+                    {format(new Date(selectedPost.scheduledAt), "MMM d, yyyy h:mm a")} ({userTimezone})
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {selectedPost?.aiPrompt && (
+              <div className="space-y-1">
+                <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+                  AI Generation Prompt
+                </span>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                  {selectedPost.aiPrompt}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter showCloseButton />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={activeDialog === "edit"} onOpenChange={(open) => !open && handleCloseDialog()}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Post</DialogTitle>
+            <DialogDescription>Update your content, platforms, and scheduling settings.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-1">
+              <Label htmlFor="edit-content">Content</Label>
+              <Textarea
+                id="edit-content"
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                rows={5}
+                className="text-sm"
+                placeholder="Post content..."
+              />
+            </div>
+
+            {/* Platform Selection */}
+            <div className="space-y-1">
+              <Label>Platforms</Label>
+              <div className="flex flex-wrap gap-2">
+                {SOCIAL_PLATFORMS.map((platform) => {
+                  const isSelected = editPlatforms.includes(platform);
+                  return (
+                    <button
+                      key={platform}
+                      type="button"
+                      onClick={() => toggleEditPlatform(platform)}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
+                        isSelected
+                          ? "bg-forge text-white border-transparent"
+                          : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300 dark:bg-ink dark:text-neutral-400 dark:border-neutral-800"
+                      )}
+                    >
+                      {formatPlatformLabel(platform)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Status & Schedule */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="edit-status">Status</Label>
+                <select
+                  id="edit-status"
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value as PostStatus)}
+                  className="w-full h-11 px-3 text-sm bg-white border rounded-lg focus:outline-none focus:ring-1 focus:ring-forge dark:bg-ink dark:border-neutral-800"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="scheduled">Scheduled</option>
+                </select>
+              </div>
+
+              {editStatus === "scheduled" && (
+                <div className="space-y-1">
+                  <Label htmlFor="edit-scheduled-at">Schedule Time</Label>
+                  <Input
+                    id="edit-scheduled-at"
+                    type="datetime-local"
+                    value={editScheduledAt}
+                    onChange={(e) => setEditScheduledAt(e.target.value)}
+                    className="h-11 text-xs"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" className="h-11" onClick={handleCloseDialog} disabled={isActionLoading}>
+              Cancel
+            </Button>
+            <Button className="h-11 bg-gradient-forge text-white" onClick={handleSaveEditPost} disabled={isActionLoading}>
+              {isActionLoading ? <Loader size="sm" /> : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={activeDialog === "delete"} onOpenChange={(open) => !open && handleCloseDialog()}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Post</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this post? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button variant="outline" className="h-11" onClick={handleCloseDialog} disabled={isActionLoading}>
+              Cancel
+            </Button>
+            <Button variant="destructive" className="h-11" onClick={handleDeletePost} disabled={isActionLoading}>
+              {isActionLoading ? <Loader size="sm" /> : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Publish Confirmation Dialog */}
+      <Dialog open={activeDialog === "publish"} onOpenChange={(open) => !open && handleCloseDialog()}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Publish Post Now</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to publish this post immediately to all selected platforms?
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button variant="outline" className="h-11" onClick={handleCloseDialog} disabled={isActionLoading}>
+              Cancel
+            </Button>
+            <Button className="h-11 bg-gradient-forge text-white" onClick={handlePublishPostNow} disabled={isActionLoading}>
+              {isActionLoading ? <Loader size="sm" /> : "Publish Now"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
