@@ -35,6 +35,10 @@ const createPostShape = {
   format: z.string().trim().optional(),
   timezone: z.string().trim().optional(),
   imageStatus: z.enum(["pending", "success", "failed", "none"]).default("none"),
+  postType: z.enum(["post", "article"]).default("post"),
+  articleUrl: z.preprocess(emptyStringToNullOrUndefined, z.string().url().optional().nullable()),
+  articleTitle: z.string().trim().optional().nullable(),
+  articleDescription: z.string().trim().optional().nullable(),
 };
 
 export const createPostSchema = z

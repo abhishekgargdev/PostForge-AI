@@ -57,6 +57,7 @@ type PostItem = {
   createdAt: string;
   timezone?: string;
   platformsDetail?: PlatformDetail[];
+  postType?: "post" | "article";
 };
 
 export default function QueuePage() {
@@ -259,6 +260,13 @@ export default function QueuePage() {
                 {posts.map((post) => (
                   <tr key={post.id} className="hover:bg-neutral-50/50 transition-colors">
                     <td className="p-4 pl-6 max-w-sm">
+                      <div className="flex items-center gap-2 mb-1">
+                        {post.postType === "article" ? (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-bold text-forge uppercase tracking-wide bg-forge/10 px-1.5 py-0.5 rounded">
+                            Article
+                          </span>
+                        ) : null}
+                      </div>
                       <p className="line-clamp-2 text-ink leading-relaxed font-medium">
                         {post.content}
                       </p>
@@ -419,6 +427,13 @@ export default function QueuePage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    {post.postType === "article" ? (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-bold text-forge uppercase tracking-wide bg-forge/10 px-1.5 py-0.5 rounded">
+                        Article
+                      </span>
+                    ) : null}
+                  </div>
                   <p className="text-sm text-ink leading-relaxed font-medium line-clamp-3">
                     {post.content}
                   </p>

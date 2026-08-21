@@ -114,6 +114,10 @@ export function PostCreationWizard() {
   const [tone, setTone] = useState<PostTone>("professional");
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [customPrompt, setCustomPrompt] = useState("");
+  const [postType, setPostType] = useState<"post" | "article">("post");
+  const [articleUrl, setArticleUrl] = useState("");
+  const [articleTitle, setArticleTitle] = useState("");
+  const [articleDescription, setArticleDescription] = useState("");
 
   const [dayPreferenceHint, setDayPreferenceHint] = useState<
     ContentPreferencesResponse | null
@@ -270,6 +274,7 @@ export function PostCreationWizard() {
       topic: topic.trim(),
       goal: goal as PostGoal,
       keyPoints: keyPoints.trim() || undefined,
+      postType,
     };
   }
 
@@ -362,6 +367,19 @@ export function PostCreationWizard() {
 
       if (!goal) {
         toast.error("Select a goal for this post.");
+        return;
+      }
+    }
+
+    if (postType === "article") {
+      if (!articleUrl.trim()) {
+        toast.error("Article URL is required.");
+        return;
+      }
+      try {
+        new URL(articleUrl.trim());
+      } catch {
+        toast.error("Invalid Article URL.");
         return;
       }
     }
@@ -488,6 +506,10 @@ export function PostCreationWizard() {
           scheduledAt: options?.scheduledAt,
           timezone: userTimezone,
           imageStatus: imageUrl ? "success" : "none",
+          postType,
+          articleUrl: postType === "article" ? articleUrl.trim() || undefined : undefined,
+          articleTitle: postType === "article" ? articleTitle.trim() || undefined : undefined,
+          articleDescription: postType === "article" ? articleDescription.trim() || undefined : undefined,
         }),
       });
 
@@ -525,6 +547,10 @@ export function PostCreationWizard() {
           mediaLibraryId: mediaLibraryId || undefined,
           status: "draft",
           imageStatus: imageUrl ? "success" : "none",
+          postType,
+          articleUrl: postType === "article" ? articleUrl.trim() || undefined : undefined,
+          articleTitle: postType === "article" ? articleTitle.trim() || undefined : undefined,
+          articleDescription: postType === "article" ? articleDescription.trim() || undefined : undefined,
         }),
       });
 
@@ -741,6 +767,20 @@ export function PostCreationWizard() {
             ) : null}
 
             <div className="grid gap-2">
+              <Label htmlFor="post-type">Post Type</Label>
+              <select
+                id="post-type"
+                value={postType}
+                onChange={(event) => setPostType(event.target.value as "post" | "article")}
+                className="h-11 px-3 text-sm bg-white border rounded-lg focus:outline-none focus:ring-1 focus:ring-forge dark:bg-ink dark:border-neutral-800"
+                disabled={isBusy}
+              >
+                <option value="post">Regular Post</option>
+                <option value="article">Article Share</option>
+              </select>
+            </div>
+
+            <div className="grid gap-2">
               <Label htmlFor="post-topic">Topic — what&apos;s this post about?</Label>
               <Input
                 id="post-topic"
@@ -751,6 +791,47 @@ export function PostCreationWizard() {
                 disabled={isBusy || (advancedOpen && Boolean(customPrompt.trim()))}
               />
             </div>
+
+            {postType === "article" && (
+              <div className="space-y-4 p-4 rounded-xl border bg-neutral-50/50 dark:bg-ink/50 dark:border-neutral-800">
+                <div className="grid gap-2">
+                  <Label htmlFor="article-url">Article URL</Label>
+                  <Input
+                    id="article-url"
+                    type="url"
+                    value={articleUrl}
+                    onChange={(event) => setArticleUrl(event.target.value)}
+                    className="h-11"
+                    placeholder="https://example.com/my-article"
+                    disabled={isBusy}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="article-title">Article Title (Optional)</Label>
+                  <Input
+                    id="article-title"
+                    type="text"
+                    value={articleTitle}
+                    onChange={(event) => setArticleTitle(event.target.value)}
+                    className="h-11"
+                    placeholder="Enter article title..."
+                    disabled={isBusy}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="article-description">Article Description (Optional)</Label>
+                  <Textarea
+                    id="article-description"
+                    value={articleDescription}
+                    onChange={(event) => setArticleDescription(event.target.value)}
+                    rows={2}
+                    className="min-h-16"
+                    placeholder="Short summary description..."
+                    disabled={isBusy}
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="grid gap-3">
               <Label>Goal</Label>

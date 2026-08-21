@@ -127,6 +127,18 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     if (parsed.data.imageStatus !== undefined) {
       post.imageStatus = parsed.data.imageStatus;
     }
+    if (parsed.data.postType !== undefined) {
+      post.postType = parsed.data.postType;
+    }
+    if (parsed.data.articleUrl !== undefined) {
+      post.articleUrl = parsed.data.articleUrl || undefined;
+    }
+    if (parsed.data.articleTitle !== undefined) {
+      post.articleTitle = parsed.data.articleTitle || undefined;
+    }
+    if (parsed.data.articleDescription !== undefined) {
+      post.articleDescription = parsed.data.articleDescription || undefined;
+    }
     if (parsed.data.status !== undefined) {
       post.status = parsed.data.status;
       if (parsed.data.status === "published" && !post.publishedAt) {

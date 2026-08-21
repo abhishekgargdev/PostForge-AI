@@ -29,6 +29,7 @@ export const generateTextSchema = z
     goal: z.enum(POST_GOALS).optional(),
     keyPoints: z.string().trim().optional(),
     customPrompt: z.string().trim().optional(),
+    postType: z.enum(["post", "article"]).default("post"),
   })
   .superRefine((value, context) => {
     if (value.customPrompt) {

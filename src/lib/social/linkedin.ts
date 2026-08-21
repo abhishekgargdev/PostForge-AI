@@ -181,7 +181,28 @@ export async function publishLinkedInPost(params: {
     },
   };
 
-  if (imageUrn) {
+  if (post.postType === "article" && post.articleUrl) {
+    specificContent = {
+      "com.linkedin.ugc.ShareContent": {
+        shareCommentary: {
+          text: content,
+        },
+        shareMediaCategory: "ARTICLE",
+        media: [
+          {
+            status: "READY",
+            description: {
+              text: post.articleDescription || content,
+            },
+            originalUrl: post.articleUrl,
+            title: {
+              text: post.articleTitle || "Article",
+            },
+          },
+        ],
+      },
+    };
+  } else if (imageUrn) {
     specificContent = {
       "com.linkedin.ugc.ShareContent": {
         shareCommentary: {

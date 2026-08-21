@@ -99,6 +99,11 @@ export function PostsList() {
   const [editPlatforms, setEditPlatforms] = useState<SocialPlatform[]>([]);
   const [editStatus, setEditStatus] = useState<PostStatus>("draft");
   const [editScheduledAt, setEditScheduledAt] = useState("");
+  const [editPostType, setEditPostType] = useState<"post" | "article">("post");
+  const [editImageUrl, setEditImageUrl] = useState("");
+  const [editArticleUrl, setEditArticleUrl] = useState("");
+  const [editArticleTitle, setEditArticleTitle] = useState("");
+  const [editArticleDescription, setEditArticleDescription] = useState("");
   const [isActionLoading, setIsActionLoading] = useState(false);
 
   // Load timezone on mount
@@ -116,6 +121,11 @@ export function PostsList() {
       setEditContent(post.content);
       setEditPlatforms(post.platforms);
       setEditStatus(post.status);
+      setEditPostType(post.postType || "post");
+      setEditImageUrl(post.imageUrl || "");
+      setEditArticleUrl(post.articleUrl || "");
+      setEditArticleTitle(post.articleTitle || "");
+      setEditArticleDescription(post.articleDescription || "");
       if (post.scheduledAt) {
         setEditScheduledAt(convertUtcToLocalString(post.scheduledAt, userTimezone));
       } else {
@@ -209,6 +219,19 @@ export function PostsList() {
       isoScheduledAt = scheduleDate.toISOString();
     }
 
+    if (editPostType === "article") {
+      if (!editArticleUrl.trim()) {
+        toast.error("Article URL is required");
+        return;
+      }
+      try {
+        new URL(editArticleUrl);
+      } catch {
+        toast.error("Invalid Article URL");
+        return;
+      }
+    }
+
     setIsActionLoading(true);
     try {
       await apiClient(`/api/posts/${selectedPost.id}`, {
@@ -219,6 +242,11 @@ export function PostsList() {
           status: editStatus,
           scheduledAt: isoScheduledAt,
           timezone: userTimezone,
+          postType: editPostType,
+          imageUrl: editImageUrl.trim() || null,
+          articleUrl: editPostType === "article" ? editArticleUrl.trim() : null,
+          articleTitle: editPostType === "article" ? editArticleTitle.trim() || null : null,
+          articleDescription: editPostType === "article" ? editArticleDescription.trim() || null : null,
         }),
       });
       toast.success("Post updated successfully");
@@ -341,6 +369,11 @@ export function PostsList() {
                 <CardHeader>
                   <div className="flex items-start justify-between gap-3">
                     <CardTitle className="line-clamp-2 text-base">
+                      {post.postType === "article" ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-forge uppercase tracking-wide bg-forge/10 px-2 py-0.5 rounded mr-2">
+                          Article
+                        </span>
+                      ) : null}
                       {truncate(post.content, 80)}
                     </CardTitle>
                     <div className="flex items-center gap-1">
@@ -404,7 +437,14 @@ export function PostsList() {
                 {posts.map((post) => (
                   <TableRow key={post.id}>
                     <TableCell className="max-w-md">
-                      <p className="line-clamp-2">{post.content}</p>
+                      <div className="flex items-center gap-2">
+                        {post.postType === "article" ? (
+                          <Badge className="bg-forge/10 text-forge border-transparent hover:bg-forge/15 text-[10px] font-bold uppercase tracking-wide shrink-0">
+                            Article
+                          </Badge>
+                        ) : null}
+                        <p className="line-clamp-2">{post.content}</p>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
@@ -498,6 +538,28 @@ export function PostsList() {
           </DialogHeader>
 
           <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+                  Type
+                </span>
+                <div>
+                  <Badge className="capitalize">
+                    {selectedPost?.postType || "post"}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+                  Status
+                </span>
+                <div>
+                  {selectedPost && <PostStatusBadge status={selectedPost.status} />}
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-1">
               <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
                 Content
@@ -506,6 +568,60 @@ export function PostsList() {
                 {selectedPost?.content}
               </div>
             </div>
+
+            {selectedPost?.postType === "article" && selectedPost.articleUrl && (
+              <div className="space-y-3 rounded-xl border bg-neutral-50/50 p-3 dark:bg-ink/50 dark:border-neutral-800">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wide">
+                    Article Link
+                  </span>
+                  <a
+                    href={selectedPost.articleUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block text-xs font-medium text-forge hover:underline truncate"
+                  >
+                    {selectedPost.articleUrl}
+                  </a>
+                </div>
+                {selectedPost.articleTitle && (
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wide">
+                      Article Title
+                    </span>
+                    <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+                      {selectedPost.articleTitle}
+                    </p>
+                  </div>
+                )}
+                {selectedPost.articleDescription && (
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wide">
+                      Article Description
+                    </span>
+                    <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                      {selectedPost.articleDescription}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {selectedPost?.imageUrl && (
+              <div className="space-y-1">
+                <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+                  Attached Image
+                </span>
+                <div className="relative aspect-video w-full overflow-hidden rounded-xl border bg-neutral-100 dark:bg-ink dark:border-neutral-800">
+                  <img
+                    src={selectedPost.imageUrl}
+                    alt="Attached visual"
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="space-y-1">
               <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
@@ -520,34 +636,23 @@ export function PostsList() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            {selectedPost?.scheduledAt && (
               <div className="space-y-1">
                 <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
-                  Status
+                  Scheduled Time
                 </span>
-                <div>
-                  {selectedPost && <PostStatusBadge status={selectedPost.status} />}
-                </div>
+                <p className="text-sm">
+                  {format(new Date(selectedPost.scheduledAt), "MMM d, yyyy h:mm a")} ({userTimezone})
+                </p>
               </div>
-
-              {selectedPost?.scheduledAt && (
-                <div className="space-y-1">
-                  <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
-                    Scheduled Time
-                  </span>
-                  <p className="text-sm">
-                    {format(new Date(selectedPost.scheduledAt), "MMM d, yyyy h:mm a")} ({userTimezone})
-                  </p>
-                </div>
-              )}
-            </div>
+            )}
 
             {selectedPost?.aiPrompt && (
               <div className="space-y-1">
                 <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
-                  AI Generation Prompt
+                  AI Generation Prompt / Metadata
                 </span>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                <p className="text-sm text-neutral-600 dark:text-neutral-400 whitespace-pre-wrap">
                   {selectedPost.aiPrompt}
                 </p>
               </div>
@@ -563,19 +668,101 @@ export function PostsList() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Post</DialogTitle>
-            <DialogDescription>Update your content, platforms, and scheduling settings.</DialogDescription>
+            <DialogDescription>Update your content, type, platforms, and scheduling settings.</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="edit-post-type">Post Type</Label>
+                <select
+                  id="edit-post-type"
+                  value={editPostType}
+                  onChange={(e) => setEditPostType(e.target.value as "post" | "article")}
+                  className="w-full h-11 px-3 text-sm bg-white border rounded-lg focus:outline-none focus:ring-1 focus:ring-forge dark:bg-ink dark:border-neutral-800"
+                >
+                  <option value="post">Regular Post</option>
+                  <option value="article">Article Share</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="edit-status">Status</Label>
+                <select
+                  id="edit-status"
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value as PostStatus)}
+                  className="w-full h-11 px-3 text-sm bg-white border rounded-lg focus:outline-none focus:ring-1 focus:ring-forge dark:bg-ink dark:border-neutral-800"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="scheduled">Scheduled</option>
+                </select>
+              </div>
+            </div>
+
             <div className="space-y-1">
-              <Label htmlFor="edit-content">Content</Label>
+              <Label htmlFor="edit-content">Content / Commentary</Label>
               <Textarea
                 id="edit-content"
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
-                rows={5}
+                rows={4}
                 className="text-sm"
-                placeholder="Post content..."
+                placeholder="Write your post content..."
+              />
+            </div>
+
+            {/* If Article, show article fields */}
+            {editPostType === "article" && (
+              <div className="space-y-3 p-3 rounded-xl border bg-neutral-50/50 dark:bg-ink/50 dark:border-neutral-800">
+                <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide">Article details</p>
+                <div className="space-y-1">
+                  <Label htmlFor="edit-article-url">Article URL</Label>
+                  <Input
+                    id="edit-article-url"
+                    type="url"
+                    value={editArticleUrl}
+                    onChange={(e) => setEditArticleUrl(e.target.value)}
+                    placeholder="https://example.com/my-article"
+                    className="h-10 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="edit-article-title">Article Title</Label>
+                  <Input
+                    id="edit-article-title"
+                    type="text"
+                    value={editArticleTitle}
+                    onChange={(e) => setEditArticleTitle(e.target.value)}
+                    placeholder="Enter headline..."
+                    className="h-10 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="edit-article-description">Article Description</Label>
+                  <Textarea
+                    id="edit-article-description"
+                    value={editArticleDescription}
+                    onChange={(e) => setEditArticleDescription(e.target.value)}
+                    placeholder="Short summary description..."
+                    rows={2}
+                    className="text-xs"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Direct Image URL input */}
+            <div className="space-y-1">
+              <Label htmlFor="edit-image-url">Direct Image URL (Optional)</Label>
+              <Input
+                id="edit-image-url"
+                type="url"
+                value={editImageUrl}
+                onChange={(e) => setEditImageUrl(e.target.value)}
+                placeholder="https://example.com/image.jpg (paste direct image links here)"
+                className="h-11 text-xs"
               />
             </div>
 
@@ -604,35 +791,19 @@ export function PostsList() {
               </div>
             </div>
 
-            {/* Status & Schedule */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Schedule time if scheduled */}
+            {editStatus === "scheduled" && (
               <div className="space-y-1">
-                <Label htmlFor="edit-status">Status</Label>
-                <select
-                  id="edit-status"
-                  value={editStatus}
-                  onChange={(e) => setEditStatus(e.target.value as PostStatus)}
-                  className="w-full h-11 px-3 text-sm bg-white border rounded-lg focus:outline-none focus:ring-1 focus:ring-forge dark:bg-ink dark:border-neutral-800"
-                >
-                  <option value="draft">Draft</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="scheduled">Scheduled</option>
-                </select>
+                <Label htmlFor="edit-scheduled-at">Schedule Time</Label>
+                <Input
+                  id="edit-scheduled-at"
+                  type="datetime-local"
+                  value={editScheduledAt}
+                  onChange={(e) => setEditScheduledAt(e.target.value)}
+                  className="h-11 text-xs"
+                />
               </div>
-
-              {editStatus === "scheduled" && (
-                <div className="space-y-1">
-                  <Label htmlFor="edit-scheduled-at">Schedule Time</Label>
-                  <Input
-                    id="edit-scheduled-at"
-                    type="datetime-local"
-                    value={editScheduledAt}
-                    onChange={(e) => setEditScheduledAt(e.target.value)}
-                    className="h-11 text-xs"
-                  />
-                </div>
-              )}
-            </div>
+            )}
           </div>
 
           <DialogFooter>

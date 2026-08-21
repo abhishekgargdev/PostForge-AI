@@ -61,6 +61,7 @@ type PostItem = {
   createdAt: string;
   timezone?: string;
   platformsDetail?: PlatformDetail[];
+  postType?: "post" | "article";
 };
 
 export default function CalendarPage() {
@@ -322,7 +323,7 @@ export default function CalendarPage() {
                         <span>{format(new Date(post.scheduledAt!), "h:mm a")}</span>
                       </div>
                       <span className="truncate block font-normal text-neutral-600">
-                        {post.content}
+                        {post.postType === "article" ? "[Article] " : ""}{post.content}
                       </span>
                     </button>
                   ))}
@@ -368,6 +369,13 @@ export default function CalendarPage() {
                     className="w-full text-left p-4 hover:bg-neutral-50/25 transition-colors flex items-start justify-between gap-4"
                   >
                     <div className="space-y-1.5 min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        {post.postType === "article" ? (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-bold text-forge uppercase tracking-wide bg-forge/10 px-1.5 py-0.5 rounded">
+                            Article
+                          </span>
+                        ) : null}
+                      </div>
                       <p className="text-sm text-ink leading-relaxed font-medium line-clamp-2">
                         {post.content}
                       </p>

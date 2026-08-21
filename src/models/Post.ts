@@ -26,6 +26,10 @@ export interface IPost {
   externalPostId?: string;
   retryCount: number;
   imageStatus?: "pending" | "success" | "failed" | "none";
+  postType: "post" | "article";
+  articleUrl?: string;
+  articleTitle?: string;
+  articleDescription?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -73,6 +77,15 @@ const postSchema = new Schema<IPost>(
       enum: ["pending", "success", "failed", "none"],
       default: "none",
     },
+    postType: {
+      type: String,
+      enum: ["post", "article"],
+      default: "post",
+      required: true,
+    },
+    articleUrl: { type: String },
+    articleTitle: { type: String },
+    articleDescription: { type: String },
   },
   { timestamps: true },
 );

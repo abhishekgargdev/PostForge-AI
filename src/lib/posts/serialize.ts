@@ -12,6 +12,10 @@ export type PostResponse = {
   publishedAt?: string;
   imageUrl?: string;
   mediaLibraryId?: string;
+  postType: "post" | "article";
+  articleUrl?: string;
+  articleTitle?: string;
+  articleDescription?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -36,6 +40,10 @@ type PostLike = Pick<
   | "publishedAt"
   | "imageUrl"
   | "mediaLibraryId"
+  | "postType"
+  | "articleUrl"
+  | "articleTitle"
+  | "articleDescription"
   | "createdAt"
   | "updatedAt"
 > & {
@@ -55,6 +63,10 @@ export function toPostResponse(post: PostLike): PostResponse {
     publishedAt: post.publishedAt?.toISOString(),
     imageUrl: post.imageUrl,
     mediaLibraryId: post.mediaLibraryId?.toString(),
+    postType: post.postType || "post",
+    articleUrl: post.articleUrl,
+    articleTitle: post.articleTitle,
+    articleDescription: post.articleDescription,
     createdAt: post.createdAt.toISOString(),
     updatedAt: post.updatedAt.toISOString(),
   };

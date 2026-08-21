@@ -206,6 +206,10 @@ export async function publishLinkedInPost(input: {
   platformUserId: string;
   content: string;
   imageUrl?: string;
+  postType?: "post" | "article";
+  articleUrl?: string;
+  articleTitle?: string;
+  articleDescription?: string;
 }) {
   validatePlatformCharacterLimit("linkedin", input.content);
 
@@ -234,7 +238,28 @@ export async function publishLinkedInPost(input: {
     },
   };
 
-  if (input.imageUrl && imageUrn) {
+  if (input.postType === "article" && input.articleUrl) {
+    specificContent = {
+      "com.linkedin.ugc.ShareContent": {
+        shareCommentary: {
+          text: finalContent,
+        },
+        shareMediaCategory: "ARTICLE",
+        media: [
+          {
+            status: "READY",
+            description: {
+              text: input.articleDescription || finalContent,
+            },
+            originalUrl: input.articleUrl,
+            title: {
+              text: input.articleTitle || "Article",
+            },
+          },
+        ],
+      },
+    };
+  } else if (input.imageUrl && imageUrn) {
     specificContent = {
       "com.linkedin.ugc.ShareContent": {
         shareCommentary: {

@@ -154,6 +154,10 @@ export async function POST(request: NextRequest) {
       format: parsed.data.format,
       timezone: parsed.data.timezone || user.timezone || "UTC",
       imageStatus: parsed.data.imageStatus,
+      postType: parsed.data.postType || "post",
+      articleUrl: parsed.data.articleUrl || undefined,
+      articleTitle: parsed.data.articleTitle || undefined,
+      articleDescription: parsed.data.articleDescription || undefined,
     });
 
     if (

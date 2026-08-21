@@ -55,6 +55,7 @@ type GenerateTextInput = {
   keyPoints?: string;
   tone: PostTone;
   customPrompt?: string;
+  postType?: "post" | "article";
 };
 
 type GenerateImageInput = {
@@ -211,10 +212,11 @@ function buildStructuredGenerationRequest({
   keyPoints,
   tone,
   platform,
+  postType,
 }: Required<
   Pick<GenerateTextInput, "topic" | "goal" | "tone" | "platform">
 > &
-  Pick<GenerateTextInput, "keyPoints">): string {
+  Pick<GenerateTextInput, "keyPoints" | "postType">): string {
   const limit = PLATFORM_CHAR_LIMITS[platform];
   const platformLabel = PLATFORM_LABELS[platform];
   const goalLabel = POST_GOAL_LABELS[goal];
@@ -223,8 +225,13 @@ function buildStructuredGenerationRequest({
     .map((line) => line.trim())
     .filter(Boolean);
 
+  const introMessage =
+    postType === "article"
+      ? `Create an engaging commentary/introduction to accompany a shared article on ${platformLabel} about: ${topic}`
+      : `Create a ${platformLabel} post about: ${topic}`;
+
   const sections = [
-    `Create a ${platformLabel} post about: ${topic}`,
+    introMessage,
     `Goal: ${goalLabel}`,
     `Tone: ${tone}`,
   ];
@@ -259,6 +266,7 @@ function buildGenerationPrompt(input: GenerateTextInput): string {
     keyPoints: input.keyPoints,
     tone: input.tone,
     platform: input.platform,
+    postType: input.postType,
   });
 }
 
