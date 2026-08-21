@@ -2,7 +2,6 @@ import { decryptToken } from "@/lib/crypto/tokens";
 import type { IPost } from "@/models/Post";
 import type { IPostPlatform } from "@/models/PostPlatform";
 import type { ISocialAccount } from "@/models/SocialAccount";
-import { mapToLinkedInDTO } from "./linkedin-mapper";
 
 export type LinkedInPublishResult =
   | { success: true; platformPostId: string; platformUrl: string }
@@ -34,18 +33,26 @@ async function uploadImageToLinkedIn(
   const arrayBuffer = await imgRes.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
-  const initRes = await fetch("https://api.linkedin.com/rest/images?action=initializeUpload", {
+  const initRes = await fetch("https://api.linkedin.com/v2/assets?action=registerUpload", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
-      "LinkedIn-Version": "202405",
       "X-Restli-Protocol-Version": "2.0.0",
     },
     body: JSON.stringify({
-      initializeUploadRequest: {
+      registerUploadRequest: {
+        recipes: [
+          "urn:li:digitalmediaRecipe:feedshare-image"
+        ],
         owner: author,
-      },
+        serviceRelationships: [
+          {
+            relationshipType: "OWNER",
+            identifier: "urn:li:userGeneratedContent"
+          }
+        ]
+      }
     }),
   });
 
@@ -55,8 +62,8 @@ async function uploadImageToLinkedIn(
   }
 
   const initData = await initRes.json();
-  const uploadUrl = initData.value?.uploadUrl;
-  const imageUrn = initData.value?.image;
+  const uploadUrl = initData.value?.uploadMechanism?.["com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest"]?.uploadUrl;
+  const imageUrn = initData.value?.asset;
 
   if (!uploadUrl || !imageUrn) {
     throw new Error("LinkedIn image upload initialization did not return uploadUrl or image URN.");
@@ -165,19 +172,51 @@ export async function publishLinkedInPost(params: {
     }
   }
 
-  const dto = mapToLinkedInDTO(
-    post,
-    postPlatform,
-    socialAccount,
-    imageUrn
-  );
+  let specificContent: any = {
+    "com.linkedin.ugc.ShareContent": {
+      shareCommentary: {
+        text: content,
+      },
+      shareMediaCategory: "NONE",
+    },
+  };
 
-  // If image upload failed, append image url to text commentary
-  if (imageUrl && !imageUrn) {
-    dto.commentary = `${dto.commentary}\n\n${imageUrl}`;
+  if (imageUrn) {
+    specificContent = {
+      "com.linkedin.ugc.ShareContent": {
+        shareCommentary: {
+          text: content,
+        },
+        shareMediaCategory: "IMAGE",
+        media: [
+          {
+            status: "READY",
+            description: {
+              text: post.topic || "Post Image",
+            },
+            media: imageUrn,
+            title: {
+              text: post.topic || "Post Image",
+            },
+          },
+        ],
+      },
+    };
+  } else if (imageUrl) {
+    // Fallback: append image URL to text commentary
+    specificContent["com.linkedin.ugc.ShareContent"].shareCommentary.text = `${content}\n\n${imageUrl}`;
   }
 
-  const endpoint = "https://api.linkedin.com/rest/posts";
+  const payload = {
+    author,
+    lifecycleState: "PUBLISHED",
+    specificContent,
+    visibility: {
+      "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC",
+    },
+  };
+
+  const endpoint = "https://api.linkedin.com/v2/ugcPosts";
   const timestamp = new Date().toISOString();
   
   try {
@@ -186,10 +225,9 @@ export async function publishLinkedInPost(params: {
       headers: {
         Authorization: `Bearer ${decryptedToken}`,
         "Content-Type": "application/json",
-        "LinkedIn-Version": "202405",
         "X-Restli-Protocol-Version": "2.0.0",
       },
-      body: JSON.stringify(dto),
+      body: JSON.stringify(payload),
     });
 
     const requestId = response.headers.get("x-restli-gateway-error-id") || `req-${Date.now()}`;

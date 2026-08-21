@@ -148,18 +148,26 @@ async function uploadImageToLinkedIn(
   const arrayBuffer = await imgRes.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
-  const initRes = await fetch("https://api.linkedin.com/rest/images?action=initializeUpload", {
+  const initRes = await fetch("https://api.linkedin.com/v2/assets?action=registerUpload", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
-      "LinkedIn-Version": "202405",
       "X-Restli-Protocol-Version": "2.0.0",
     },
     body: JSON.stringify({
-      initializeUploadRequest: {
+      registerUploadRequest: {
+        recipes: [
+          "urn:li:digitalmediaRecipe:feedshare-image"
+        ],
         owner: author,
-      },
+        serviceRelationships: [
+          {
+            relationshipType: "OWNER",
+            identifier: "urn:li:userGeneratedContent"
+          }
+        ]
+      }
     }),
   });
 
@@ -169,8 +177,8 @@ async function uploadImageToLinkedIn(
   }
 
   const initData = await initRes.json();
-  const uploadUrl = initData.value?.uploadUrl;
-  const imageUrn = initData.value?.image;
+  const uploadUrl = initData.value?.uploadMechanism?.["com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest"]?.uploadUrl;
+  const imageUrn = initData.value?.asset;
 
   if (!uploadUrl || !imageUrn) {
     throw new Error("LinkedIn image upload initialization did not return uploadUrl or image URN.");
@@ -205,46 +213,70 @@ export async function publishLinkedInPost(input: {
     ? input.platformUserId
     : `urn:li:person:${input.platformUserId}`;
 
-  let contentPayload: any = {};
   let finalContent = input.content;
+
+  let imageUrn: string | undefined = undefined;
 
   if (input.imageUrl) {
     try {
-      const imageUrn = await uploadImageToLinkedIn(input.accessToken, author, input.imageUrl);
-      contentPayload = {
-        content: {
-          media: {
-            id: imageUrn,
-          },
-        },
-      };
+      imageUrn = await uploadImageToLinkedIn(input.accessToken, author, input.imageUrl);
     } catch (err) {
       console.error("LinkedIn image upload failed, falling back to text-only post:", err);
-      finalContent = `${input.content}\n\n${input.imageUrl}`;
     }
   }
 
-  const response = await fetch("https://api.linkedin.com/rest/posts", {
+  let specificContent: any = {
+    "com.linkedin.ugc.ShareContent": {
+      shareCommentary: {
+        text: finalContent,
+      },
+      shareMediaCategory: "NONE",
+    },
+  };
+
+  if (input.imageUrl && imageUrn) {
+    specificContent = {
+      "com.linkedin.ugc.ShareContent": {
+        shareCommentary: {
+          text: finalContent,
+        },
+        shareMediaCategory: "IMAGE",
+        media: [
+          {
+            status: "READY",
+            description: {
+              text: "Post Image",
+            },
+            media: imageUrn,
+            title: {
+              text: "Post Image",
+            },
+          },
+        ],
+      },
+    };
+  } else if (input.imageUrl) {
+    // Fallback: append image URL to text commentary
+    specificContent["com.linkedin.ugc.ShareContent"].shareCommentary.text = `${finalContent}\n\n${input.imageUrl}`;
+  }
+
+  const payload = {
+    author,
+    lifecycleState: "PUBLISHED",
+    specificContent,
+    visibility: {
+      "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC",
+    },
+  };
+
+  const response = await fetch("https://api.linkedin.com/v2/ugcPosts", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${input.accessToken}`,
       "Content-Type": "application/json",
-      "LinkedIn-Version": "202405",
       "X-Restli-Protocol-Version": "2.0.0",
     },
-    body: JSON.stringify({
-      author,
-      commentary: finalContent,
-      visibility: "PUBLIC",
-      distribution: {
-        feedDistribution: "MAIN_FEED",
-        targetEntities: [],
-        thirdPartyDistributionChannels: [],
-      },
-      lifecycleState: "PUBLISHED",
-      isReshareDisabledByAuthor: false,
-      ...contentPayload,
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
